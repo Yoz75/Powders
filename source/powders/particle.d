@@ -58,7 +58,7 @@ public:
     Sand sand;
     Particle particle;
     Gravity gravity;
-    Slipable slipable;
+    Adhesion adhesion;
 }
 
 public struct StaticParticleBundle
@@ -69,13 +69,13 @@ public:
 }
 
 /// A component that indicates slip particles
-public struct Slipable
+public struct Adhesion
 {
 public:
     /// The slipperiness of particle in range 0..1
-    float slipperiness = 1;
+    float adhesion = 1;
     /// Can the particle slip, or not?
-    bool canSlip;
+    bool isActive;
 }
 
 /// System, that starts other systems in powders.particle module
@@ -87,8 +87,9 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!SandSystem.create();
         SystemFactory!ParticleSpawnSystem.create();
         SystemFactory!GravitySystem.create();
-        SystemFactory!SlipableSystem.create();
+        SystemFactory!AdhesionSystem.create();
         SystemFactory!ChangeGravitySystem.create();
+        SystemFactory!SandControllerSelector.create();
 
         immutable auto mapResolution = globalMap.resolution;
 
@@ -101,8 +102,82 @@ public class InitialParticlesSystem : BaseSystem
     }
 }
 
-private class ParticleSpawnSystem : BaseSystem
+/// Something, that can make particles of some type and delete them
+public abstract class ParticleLifeController
 {
+public:
+    /// Make entity a particle of some type
+    abstract void make(Entity entity);
+    abstract void dispose(Entity entity);
+}
+
+public class DebugSandController : ParticleLifeController
+{
+public:
+    override void make(Entity entity)
+    {
+        entity.addBundle!SandParticleBundle();
+        entity.getComponent!Adhesion().value.adhesion = 1;
+        entity.getComponent!MapRenderable().value.color = Color(255, 0, 0);
+    }
+
+    override void dispose(Entity entity)
+    {
+        entity.removeBundle!SandParticleBundle();
+        entity.getComponent!MapRenderable().value.color = black;
+    }
+}
+
+public class SandController : ParticleLifeController
+{
+public:
+    override void make(Entity entity)
+    {
+        entity.addBundle!SandParticleBundle();
+        entity.getComponent!Adhesion().value.adhesion = 0.98;
+        entity.getComponent!MapRenderable().value.color = Color(255, 255, 0);
+    }
+
+    override void dispose(Entity entity)
+    {
+        entity.removeBundle!SandParticleBundle();
+        entity.getComponent!MapRenderable().value.color = black;
+    }
+}
+
+pragma(msg, "TODO: Delete this shit at particle.d and make a GUI");
+private class SandControllerSelector : BaseSystem
+{
+    protected override void update()
+    {
+        import powders.input;
+        if(Input.isKeyDown(Keys.one))
+        {
+            ParticleSpawnSystem.instance.selectController(new DebugSandController);
+        }
+        else if(Input.isKeyDown(Keys.two))
+        {
+            ParticleSpawnSystem.instance.selectController(new SandController);   
+        }
+    }
+}
+
+public class ParticleSpawnSystem : BaseSystem
+{
+    public static ParticleSpawnSystem instance;
+    private ParticleLifeController currentController = new DebugSandController();
+
+    public this()
+    {
+        instance = this;
+    }
+
+    public void selectController(ParticleLifeController controller)
+    {
+        assert(controller !is null, "maker can't be null!");
+        currentController = controller;
+    }
+
     protected override void update()
     {
         import powders.input;
@@ -116,8 +191,7 @@ private class ParticleSpawnSystem : BaseSystem
                 return;
 
             auto entity = globalMap.getAt([position[0], position[1]]);
-            entity.addBundle!SandParticleBundle();
-            entity.getComponent!MapRenderable().value.color = Color(255, 0, 0);
+            currentController.make(entity);
         }
         else if(IsMouseButtonDown(MouseButton.MOUSE_BUTTON_RIGHT))
         {
@@ -127,8 +201,7 @@ private class ParticleSpawnSystem : BaseSystem
                 return;
 
             auto entity = globalMap.getAt([position[0], position[1]]);
-            entity.removeBundle!SandParticleBundle();
-            entity.getComponent!MapRenderable().value.color = black;
+            currentController.dispose(entity);
         }
     }
 }
@@ -140,9 +213,9 @@ private class SandSystem : MapEntitySystem!Sand
         import std.math : round;
         import std.algorithm : clamp;
 
-        auto slipable = entity.getComponent!Slipable();
+        auto adhesion = entity.getComponent!Adhesion();
 
-        if(slipable.hasValue) slipable.value.canSlip = false;
+        if(adhesion.hasValue) adhesion.value.isActive = false;
 
         auto currentPosition = entity.getComponent!Position().value.xy;
 
@@ -162,7 +235,7 @@ private class SandSystem : MapEntitySystem!Sand
         if(finalPosition == currentPosition)
         {
             sand.velocity = [0, 0];
-            if(slipable.hasValue) slipable.value.canSlip = true;
+            if(adhesion.hasValue) adhesion.value.isActive = true;
             return;
         }
 
@@ -243,15 +316,15 @@ private class ChangeGravitySystem : BaseSystem
     }
 }
 
-private class SlipableSystem : MapEntitySystem!Slipable
+private class AdhesionSystem : MapEntitySystem!Adhesion
 {
-    protected override void updateComponent(Entity entity, ref Slipable slipable)
+    protected override void updateComponent(Entity entity, ref Adhesion adhesion)
     {
         import std.random;
 
-        assert(entity.hasComponent!Sand(), "Slipable component can be only on Sand particles!");
+        assert(entity.hasComponent!Sand(), "Adhesion component can be only on Sand particles!");
             
-        if(!slipable.canSlip) return;
+        if(!adhesion.isActive) return;
         
         /*
                -1 0 1
@@ -259,32 +332,17 @@ private class SlipableSystem : MapEntitySystem!Slipable
              0 []xx[]
              1 [][][]
         */
-        // bias from current cell to lower cell (depending on gravity)
-        enum int[2][GravityDirection] lowerCellBias = 
+        // should be int[2][2], but float[2][2] because of boilerplate
+        enum float[2][2][GravityDirection] direction2LeftRightBiases = 
         [
-            GravityDirection.none: [0, 0],
-            GravityDirection.down: [0, 1],
-            GravityDirection.left: [-1, 0],
-            GravityDirection.right: [1, 0],
-            GravityDirection.up: [0, -1]
-
+            GravityDirection.none: [[0, 0], [0, 0]],
+            GravityDirection.down: [[-1, 0], [1, 0]],
+            GravityDirection.left: [[0, -1], [0, 1]],
+            GravityDirection.right: [[-1, 0], [1, 0]],
+            GravityDirection.up: [[-1, 0], [1, 0]]
         ];
 
-        int[2] downCellPosition = entity.getComponent!Position().value.xy[] + lowerCellBias[Gravity.direction][];
-        if(!globalMap.getAt(downCellPosition).hasComponent!Particle())
-        {
-            slipable.canSlip = false;
-            return;
-        }        
-
-        /*
-               -1 0 1
-            -1 [][][]
-             0 []xx[]
-             1 [][][]
-        */
-        // should be int[2][2], but float[2][2] because of boilerplate
-        enum float[2][2][GravityDirection] direction2Biases = 
+        enum float[2][2][GravityDirection] direction2DiagonalBiases = 
         [
             GravityDirection.none: [[0, 0], [0, 0]],
             GravityDirection.down: [[1, 1], [-1, 1]],
@@ -292,6 +350,19 @@ private class SlipableSystem : MapEntitySystem!Slipable
             GravityDirection.right: [[1, -1], [1, 1]],
             GravityDirection.up: [[-1, -1], [1, -1]]
         ];
+
+        float[2][2][GravityDirection] direction2Biases;
+
+        if(uniform01() < adhesion.adhesion)
+        {
+            direction2Biases = direction2DiagonalBiases;    
+        }
+        else
+        {
+            direction2Biases = direction2LeftRightBiases;
+        }
+
+
 
         entity.getComponent!Sand().value.velocity[] = 
         direction2Biases[Gravity.direction][uniform(0, 2)][];
