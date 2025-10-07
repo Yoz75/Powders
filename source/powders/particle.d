@@ -43,7 +43,7 @@ public struct Gravity
 }
 
 /// Component that says that this entity can move (and fall) like sand
-public struct Sand
+public struct Powder
 {
 public:
     static float maxVelocity = 16;
@@ -51,11 +51,11 @@ public:
     float[2] velocity;
 }
 
-public struct SandParticleBundle
+public struct PowderParticleBundle
 {
 public:
     Temperature temperature;
-    Sand sand;
+    Powder powder;
     Particle particle;
     Gravity gravity;
     Adhesion adhesion;
@@ -84,7 +84,7 @@ public class InitialParticlesSystem : BaseSystem
     public override void onCreated()
     {
         assert(globalMap != Map.init, "Initial particle system is being initialized, but map is still wasn't inited!");
-        SystemFactory!SandSystem.create();
+        SystemFactory!PowderSystem.create();
         SystemFactory!ParticleSpawnSystem.create();
         SystemFactory!GravitySystem.create();
         SystemFactory!AdhesionSystem.create();
@@ -116,14 +116,14 @@ public class DebugSandController : ParticleLifeController
 public:
     override void make(Entity entity)
     {
-        entity.addBundle!SandParticleBundle();
+        entity.addBundle!PowderParticleBundle();
         entity.getComponent!Adhesion().value.adhesion = 1;
         entity.getComponent!MapRenderable().value.color = Color(255, 0, 0);
     }
 
     override void dispose(Entity entity)
     {
-        entity.removeBundle!SandParticleBundle();
+        entity.removeBundle!PowderParticleBundle();
         entity.getComponent!MapRenderable().value.color = black;
     }
 }
@@ -133,14 +133,14 @@ public class SandController : ParticleLifeController
 public:
     override void make(Entity entity)
     {
-        entity.addBundle!SandParticleBundle();
+        entity.addBundle!PowderParticleBundle();
         entity.getComponent!Adhesion().value.adhesion = 0.98;
         entity.getComponent!MapRenderable().value.color = Color(255, 255, 0);
     }
 
     override void dispose(Entity entity)
     {
-        entity.removeBundle!SandParticleBundle();
+        entity.removeBundle!PowderParticleBundle();
         entity.getComponent!MapRenderable().value.color = black;
     }
 }
@@ -206,9 +206,9 @@ public class ParticleSpawnSystem : BaseSystem
     }
 }
 
-private class SandSystem : MapEntitySystem!Sand
+private class PowderSystem : MapEntitySystem!Powder
 {
-    protected override void updateComponent(Entity entity, ref Sand sand)
+    protected override void updateComponent(Entity entity, ref Powder powder)
     {
         import std.math : round;
         import std.algorithm : clamp;
@@ -219,13 +219,13 @@ private class SandSystem : MapEntitySystem!Sand
 
         auto currentPosition = entity.getComponent!Position().value.xy;
 
-        if (sand.velocity[0] == 0 && sand.velocity[1] == 0)
+        if (powder.velocity[0] == 0 && powder.velocity[1] == 0)
             return;
 
-        sand.velocity[0] = sand.velocity[0].clamp(-Sand.maxVelocity, Sand.maxVelocity);
-        sand.velocity[1] = sand.velocity[1].clamp(-Sand.maxVelocity, Sand.maxVelocity);
+        powder.velocity[0] = powder.velocity[0].clamp(-Powder.maxVelocity, Powder.maxVelocity);
+        powder.velocity[1] = powder.velocity[1].clamp(-Powder.maxVelocity, Powder.maxVelocity);
 
-        int[2] roundedVelocity = [cast(int) sand.velocity[0].round, cast(int) sand.velocity[1].round];
+        int[2] roundedVelocity = [cast(int) powder.velocity[0].round, cast(int) powder.velocity[1].round];
 
         int[2] targetPosition;
         targetPosition[] = currentPosition[] + roundedVelocity[];
@@ -234,7 +234,7 @@ private class SandSystem : MapEntitySystem!Sand
 
         if(finalPosition == currentPosition)
         {
-            sand.velocity = [0, 0];
+            powder.velocity = [0, 0];
             if(adhesion.hasValue) adhesion.value.isActive = true;
             return;
         }
@@ -242,7 +242,7 @@ private class SandSystem : MapEntitySystem!Sand
         globalMap.swap(entity, globalMap.getAt(finalPosition));
 
         if(finalPosition != targetPosition)
-            sand.velocity = [0, 0];
+            powder.velocity = [0, 0];
     }
 
     private int[2] findFurthestFreeCellOnLine(int[2] start, int[2] end)
@@ -282,9 +282,9 @@ private class GravitySystem : MapEntitySystem!Gravity
 {
     protected override void updateComponent(Entity entity, ref Gravity gravity)
     {
-        if(entity.hasComponent!Sand())
+        if(entity.hasComponent!Powder())
         {
-            auto sand = entity.getComponent!Sand().value;
+            auto sand = entity.getComponent!Powder().value;
             sand.velocity[] += Gravity.direction[] * gravity.gravity * entity.getComponent!Particle().value.mass;
         }
     }
@@ -322,7 +322,7 @@ private class AdhesionSystem : MapEntitySystem!Adhesion
     {
         import std.random;
 
-        assert(entity.hasComponent!Sand(), "Adhesion component can be only on Sand particles!");
+        assert(entity.hasComponent!Powder(), "Adhesion component can be only on Powder particles!");
             
         if(!adhesion.isActive) return;
         
@@ -372,7 +372,7 @@ private class AdhesionSystem : MapEntitySystem!Adhesion
             direction2Biases = direction2LeftRightBiases;
         }
 
-        entity.getComponent!Sand().value.velocity[] = 
+        entity.getComponent!Powder().value.velocity[] = 
         direction2Biases[Gravity.direction][uniform(0, 2)][];
     }
 }
