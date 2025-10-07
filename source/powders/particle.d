@@ -117,7 +117,7 @@ public:
     override void make(Entity entity)
     {
         entity.addBundle!SandParticleBundle();
-        entity.getComponent!Adhesion().value.adhesion = 1;
+        entity.getComponent!Adhesion().value.adhesion = 0;
         entity.getComponent!MapRenderable().value.color = Color(255, 0, 0);
     }
 
@@ -326,6 +326,16 @@ private class AdhesionSystem : MapEntitySystem!Adhesion
             
         if(!adhesion.isActive) return;
         
+        auto position = entity.getComponent!Position().value;
+
+        int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
+
+        // at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
+        if(!globalMap.getAt(belowPosition).hasComponent!Particle)
+        {
+            return;
+        }
+
         /*
                -1 0 1
             -1 [][][]
@@ -361,8 +371,6 @@ private class AdhesionSystem : MapEntitySystem!Adhesion
         {
             direction2Biases = direction2LeftRightBiases;
         }
-
-
 
         entity.getComponent!Sand().value.velocity[] = 
         direction2Biases[Gravity.direction][uniform(0, 2)][];
