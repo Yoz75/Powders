@@ -117,7 +117,7 @@ public:
     override void make(Entity entity)
     {
         entity.addBundle!SandParticleBundle();
-        entity.getComponent!Adhesion().value.adhesion = 0;
+        entity.getComponent!Adhesion().value.adhesion = 1;
         entity.getComponent!MapRenderable().value.color = Color(255, 0, 0);
     }
 
