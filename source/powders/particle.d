@@ -19,10 +19,14 @@ public enum MoveDirection : byte
     positive = 1
 }
 
-/// Just a marker component of every particle.
+/// Component, that has every particle
 public struct Particle
 {
     public:
+    enum idSize = 12;
+    /// The id of particle's type. Needed for creating/deleting etc.
+    char[idSize] typeId;
+    /// Particle's mass
     float mass = 1;
 }
 
@@ -105,18 +109,40 @@ public class InitialParticlesSystem : BaseSystem
 /// Something, that can make particles of some type and delete them
 public abstract class ParticleLifeController
 {
-public:
+public:   
+
+    /// Associative array, that contains all life controllers for specific particles
+    /// (needed for simpler disposing and creating)
+    static ParticleLifeController[char[Particle.idSize]] id2Controller; 
+
+    /// Create a new particle life controller
+    static T create(this T)()
+    {
+        T self = new T();
+        id2Controller[self.getTypeId()] = self;
+
+        return self;
+    }
+
+    /// Get unique id of particle's type
+    abstract char[Particle.idSize] getTypeId();
+
     /// Make entity a particle of some type
     abstract void make(Entity entity);
+
+    /// Dispose particle
     abstract void dispose(Entity entity);
 }
 
 public class DebugSandController : ParticleLifeController
 {
 public:
+    override char[Particle.idSize] getTypeId() => "DebugSand";
+
     override void make(Entity entity)
     {
         entity.addBundle!PowderParticleBundle();
+        entity.getComponent!Particle().value.typeId = getTypeId();
         entity.getComponent!Adhesion().value.adhesion = 1;
         entity.getComponent!MapRenderable().value.color = Color(255, 0, 0);
     }
@@ -131,9 +157,13 @@ public:
 public class SandController : ParticleLifeController
 {
 public:
+
+    override char[Particle.idSize] getTypeId() => "Sand";
+
     override void make(Entity entity)
     {
         entity.addBundle!PowderParticleBundle();
+        entity.getComponent!Particle().value.typeId = getTypeId();
         entity.getComponent!Adhesion().value.adhesion = 0.98;
         entity.getComponent!MapRenderable().value.color = Color(255, 255, 0);
     }
@@ -146,18 +176,27 @@ public:
 }
 
 pragma(msg, "TODO: Delete this shit at particle.d and make a GUI");
-private class SandControllerSelector : BaseSystem
+private class SandControllerSelector : BaseSystem  
 {
+    private ParticleLifeController debugSandController;
+    private ParticleLifeController sandController;
+
+    public override void onCreated()
+    {
+        debugSandController = ParticleLifeController.create!DebugSandController();
+        sandController = ParticleLifeController.create!SandController();
+    }
+
     protected override void update()
     {
         import powders.input;
         if(Input.isKeyDown(Keys.one))
         {
-            ParticleSpawnSystem.instance.selectController(new DebugSandController);
+            ParticleSpawnSystem.instance.selectController(debugSandController);
         }
         else if(Input.isKeyDown(Keys.two))
         {
-            ParticleSpawnSystem.instance.selectController(new SandController);   
+            ParticleSpawnSystem.instance.selectController(sandController);   
         }
     }
 }
@@ -201,7 +240,17 @@ public class ParticleSpawnSystem : BaseSystem
                 return;
 
             auto entity = globalMap.getAt([position[0], position[1]]);
-            currentController.dispose(entity);
+            
+            auto particle = entity.getComponent!Particle;
+
+            if(particle.hasValue)
+            {
+                auto controller = particle.value.typeId in ParticleLifeController.id2Controller;
+                if(controller is null) return;
+
+                controller.dispose(entity);
+            }
+
         }
     }
 }
