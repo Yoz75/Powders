@@ -37,8 +37,15 @@ public void powdersMain()
     
     World gameWorld;
 
+    
+    immutable int width = GetScreenWidth();
+    immutable int height = GetScreenHeight();
+
+    SetConfigFlags(ConfigFlags.FLAG_WINDOW_UNDECORATED);
+    InitWindow(width, height, "Powders Game");
+
     SetTargetFPS(240);
-    InitWindow(800, 600, "Powders");
+
     Simulation.run!(CreateMapSystem, InitialRenderSystem, InitialInputSystem, InitialParticlesSystem, ExitSystem)
     (gameWorld, toDelegate(&beforeUpdate), toDelegate(&afterUpdate));
 
