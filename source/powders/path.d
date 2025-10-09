@@ -1,11 +1,27 @@
 module powders.path;
 
-import std.file : getcwd;
+import std.file;
 
+version(Windows)
+{
+    private enum char separator = '\\';
+}
+else
+{
+    private enum char separator = '/';
+}
 string getSettingsPath()
 {
     enum settingsFolderName = "settings";
 
     auto cwd = getcwd();
-    return cwd ~ "/" ~ settingsFolderName ~ "/";
+
+    immutable path = cwd ~ separator ~ settingsFolderName ~ separator;
+
+    if(!exists(path))
+    {
+        mkdirRecurse(path);
+    }
+
+    return path;    
 }

@@ -119,14 +119,12 @@ private class MovementSystem : BaseSystem
 
     public override void onCreated()
     {
-        enum settingsFileName = "/input.json";
+        enum settingsFileName = "input.json";
 
         auto settingsOptional = loadFromFile!PlayerMovementSettings(getSettingsPath() ~ settingsFileName);
 
         if(!settingsOptional.hasValue)
         {
-            pragma(msg, "TODO: Fix saving settings " ~ __FILE__);
-            return;
             saveToFile(getSettingsPath() ~ settingsFileName, settings);
         }
         else
