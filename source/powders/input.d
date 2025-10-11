@@ -119,18 +119,10 @@ private class MovementSystem : BaseSystem
 
     public override void onCreated()
     {
+        import powders.io;
         enum settingsFileName = "input.json";
 
-        auto settingsOptional = loadFromFile!PlayerMovementSettings(getSettingsPath() ~ settingsFileName);
-
-        if(!settingsOptional.hasValue)
-        {
-            saveToFile(getSettingsPath() ~ settingsFileName, settings);
-        }
-        else
-        {
-            settings = settingsOptional.value;
-        }
+        loadOrSave!PlayerMovementSettings(getSettingsPath() ~ settingsFileName, settings);
     }
 
     protected override void update()

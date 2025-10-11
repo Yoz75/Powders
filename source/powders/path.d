@@ -4,24 +4,32 @@ import std.file;
 
 version(Windows)
 {
-    private enum char separator = '\\';
+    enum char pathSeparator = '\\';
 }
 else
 {
-    private enum char separator = '/';
+    enum char pathSeparator = '/';
 }
+
+/// Get path of app's data (it can be any directory, not only C:\Users\user\AppData)
+/// Returns: the path
+string getAppDataPath()
+{
+    auto cwd = getcwd();
+
+    return cwd ~ pathSeparator; 
+}   
+
 string getSettingsPath()
 {
     enum settingsFolderName = "settings";
 
-    auto cwd = getcwd();
-
-    immutable path = cwd ~ separator ~ settingsFolderName ~ separator;
+    immutable string path = getAppDataPath ~ settingsFolderName ~ pathSeparator;
 
     if(!exists(path))
     {
         mkdirRecurse(path);
     }
 
-    return path;    
+    return path;
 }
