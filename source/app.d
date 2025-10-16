@@ -5,6 +5,13 @@ import colorize;
 
 extern(C) void main()
 {
+	version(Windows)
+	{
+		import core.sys.windows.windows;
+
+		SetConsoleCP(65_001);
+		SetConsoleOutputCP(65_001);
+	}
 	dMain();
 }
 
