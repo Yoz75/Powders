@@ -3,6 +3,7 @@ module powders.entry;
 import kernel.ecs;
 import kernel.simulation;
 import kernel.color;
+import kernel.versions;
 import powders.map;
 import powders.particle;
 import powders.rendering;
@@ -35,8 +36,9 @@ public void powdersMain()
     import raylib;
     import std.functional : toDelegate;
     
-    World gameWorld;
+    programVersion = Version.fromString(import("appVersion.txt"));
 
+    World gameWorld;
     
     immutable int width = GetScreenWidth();
     immutable int height = GetScreenHeight();
