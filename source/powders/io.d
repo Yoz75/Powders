@@ -1,5 +1,7 @@
+// Simplified kernel.jsonutil and some staff
 module powders.io;
 
+public import kernel.jsonutil : MakeJsonizable, JsonizeField;
 import kernel.jsonutil;
 
 /// Load data from settings file or leave it default if couldn't

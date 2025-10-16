@@ -1,6 +1,6 @@
 module kernel.jsonutil;
 
-public import jsonizer;
+import jsonizer;
 import kernel.optional;
 import std.file;
 
@@ -18,6 +18,7 @@ alias JsonizeField = jsonize;
 ///ditto
 public mixin template MakeJsonizable()
 {
+    public import jsonizer;
     mixin JsonizeMe;
 }
 

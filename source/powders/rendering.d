@@ -1,9 +1,11 @@
 module powders.rendering;
 
 public import kernel.color;
-import kc = kernel.color;
-import powders.map;
 import kernel.ecs;
+import kc = kernel.color;
+import kernel.jsonutil;
+import powders.map;
+import powders.particle.register;
 import raylib;
 
 /// Global camera instance
@@ -13,11 +15,12 @@ Camera2D globalCamera = Camera2D(Vector2(0, 0), Vector2(0, 0), 0, 1);
 Renderer globalRenderer;
 
 /// A thing, renderable on map
-public struct MapRenderable
+@Component(MapRenderable.stringof) public struct MapRenderable
 {
+    mixin MakeJsonizable;
 public:
     /// Main color
-    kc.Color color;
+    @JsonizeField kc.Color color;
 }
 
 /// System, that starts other systems in powders.rendering module
@@ -67,7 +70,7 @@ private final class MapRenderSystem : BaseSystem
 
     public override void onCreated()
     {
-        import powders.particle;
+        import powders.particle.basics;
         mapSprite = Sprite.create(globalMap.resolution);
 
         foreach (ref Entity entity; globalMap)

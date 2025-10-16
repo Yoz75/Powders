@@ -5,7 +5,7 @@ import kernel.simulation;
 import kernel.color;
 import kernel.versions;
 import powders.map;
-import powders.particle;
+import powders.particle.init;
 import powders.rendering;
 import powders.input;
 
@@ -43,7 +43,7 @@ public void powdersMain()
     immutable int width = GetScreenWidth();
     immutable int height = GetScreenHeight();
 
-    SetConfigFlags(ConfigFlags.FLAG_WINDOW_UNDECORATED);
+    //SetConfigFlags(ConfigFlags.FLAG_WINDOW_UNDECORATED);
     InitWindow(width, height, "Powders Game");
 
     SetTargetFPS(240);
