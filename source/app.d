@@ -1,7 +1,26 @@
 import std.stdio;
 import powders.entry;
+import core.runtime;
 
 extern(C) void main()
 {
-	powdersMain();
+	dMain();
+}
+
+
+void dMain()
+{
+	Runtime.initialize();
+	try
+	{
+		powdersMain();
+	}
+	catch(Throwable ex)
+	{
+		writeln("Unhandled error or exception: " ~ ex.msg);
+	}
+	finally
+	{
+		Runtime.terminate();
+	}
 }
