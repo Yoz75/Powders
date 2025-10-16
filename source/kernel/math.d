@@ -1,4 +1,4 @@
-module powders.math;
+module kernel.math;
 
 import std.traits: isNumeric;
 
