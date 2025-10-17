@@ -14,7 +14,12 @@ import powders.io;
 public:
     enum idSize = 12;
     /// The id of particle's type. Needed for creating/deleting etc.
-    @JsonizeField char[idSize] typeId;
+    char[idSize] typeId;
+    
+    @JsonizeField this(string particle)
+    {
+        typeId[] = particle[0 .. $];
+    }
 }
 
 @Component(Temperature.stringof) public struct Temperature
