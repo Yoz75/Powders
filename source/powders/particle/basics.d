@@ -66,7 +66,7 @@ public:
 public:
     static float maxVelocity = 16;
     /// Current velocity of the particle [x, y] in cells per update
-    @JsonizeField float[2] velocity;
+    float[2] velocity = [0, 0];
 }
 
 /// A component that indicates slip particles
