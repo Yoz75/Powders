@@ -39,5 +39,10 @@ public class CreateParticleSystem : BaseSystem
             int[2] pos = mouse2MapSpritePosition();
             buildParticle(globalMap.getAt(pos), selectedType);
         }
+        else if(IsMouseButtonDown(1))
+        {
+            int[2] pos = mouse2MapSpritePosition();
+            destroyParticle(globalMap.getAt(pos));
+        }
     }
 }

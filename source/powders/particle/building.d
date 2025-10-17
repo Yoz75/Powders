@@ -1,7 +1,10 @@
 /// The module, in witch we add particles to the map
 module powders.particle.building;
 
+import kernel.todo;
 import kernel.ecs;
+import powders.map : Position;
+import powders.rendering : MapRenderable, black;
 import powders.particle.basics;
 import powders.particle.register;
 import powders.particle.loading;
@@ -35,6 +38,31 @@ public void buildParticle(Entity entity, SerializedParticleType type)
             }
             default:
                 throw new Exception("Not all components are foreached!");
+        }
+    }
+}
+
+public void destroyParticle(Entity entity)
+{
+    auto particle = entity.getComponent!Particle();
+
+    if(!particle.hasValue) return;
+
+    mixin TODO!("Try to make this think not by removing all components, but by something else (like associative array)");
+    mixin TODO!("Also, make this not a kostyl. Maybe some information in component attribute, that says, should we
+     remove this component, set a special value to it or do nothing?");
+    static foreach (module_; defaultModules)
+    {
+        static foreach (Component; getComponentsInModule!(module_))
+        {
+            static if(!is(Component == Position) && !is(Component == MapRenderable))
+            {
+                entity.removeComponent!Component();            
+            }
+            static if(is(Component == MapRenderable))
+            {
+                entity.getComponent!MapRenderable().value.color = black;
+            }
         }
     }
 }
