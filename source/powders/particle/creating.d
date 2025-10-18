@@ -11,12 +11,12 @@ import powders.particle.loading;
 import powders.particle.building;
 import powders.ui;
 
-mixin TODO!("STILL REMOVE THIS SHIT AND ADD GUI");
+mixin TODO!("STILL REMOVE THIS SHIT AND MAKE GENERIC GUI LIKE IN TPT");
 
 public class CreateParticleSystem : BaseSystem
 {
     private SerializedParticleType[] types;
-    private SerializedParticleType selectedType;
+    private size_t selectedTypeIndex;
     
     public override void onCreated()
     {
@@ -27,7 +27,29 @@ public class CreateParticleSystem : BaseSystem
             throw new Exception("There is no types in settings!");
         }
 
-        selectedType = types[0];
+        auto nextButton = new UIButton();
+        nextButton.text = "next";
+        nextButton.size = [0.1, 0.1];
+        nextButton.position = [0.89, 0.89];
+        nextButton.onPressed ~= &nextType;
+
+        auto prevButton = new UIButton();
+        prevButton.text = "prev";
+        prevButton.size = [0.1, 0.1];
+        prevButton.position = [0.01, 0.89];
+        prevButton.onPressed ~= &prevType;
+    }
+
+    private void nextType()
+    {
+        selectedTypeIndex++;
+        selectedTypeIndex %= types.length;
+    }
+
+    private void prevType()
+    {
+        selectedTypeIndex--;
+        selectedTypeIndex %= types.length;
     }
 
     protected override void update()
@@ -48,7 +70,7 @@ public class CreateParticleSystem : BaseSystem
 
             if(isUnderUI(uintPos.screenPos2RelativeScreenPos)) return;
 
-            buildParticle(globalMap.getAt(pos), selectedType);
+            buildParticle(globalMap.getAt(pos), types[selectedTypeIndex]);
         }
         else if(IsMouseButtonDown(1))
         {
