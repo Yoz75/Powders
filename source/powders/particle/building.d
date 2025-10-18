@@ -48,7 +48,7 @@ public void destroyParticle(Entity entity)
 
     if(!particle.hasValue) return;
 
-    mixin TODO!("Try to make this think not by removing all components, but by something else (like associative array)");
+    mixin TODO!("Try to make this think not by removing all components, but something else (like associative array)");
     mixin TODO!("Also, make this not a kostyl. Maybe some information in component attribute, that says, should we
      remove this component, set a special value to it or do nothing?");
     static foreach (module_; defaultModules)
