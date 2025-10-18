@@ -222,11 +222,25 @@ public struct Renderer
     public void startFrame() { BeginDrawing(); }
     public void endFrame() { EndDrawing(); }
 
-    public void clearScreen()
+    public uint[2] getResolution() const
+    {
+        uint[2] resolution;
+
+        resolution[0] = GetScreenWidth();
+        resolution[1] = GetScreenHeight();
+
+        return resolution;
+    }
+
+    public void clearScreen() const
     {
         ClearBackground(raylib.Color(0, 0, 0, 255));
     }
 
+    /// Render a sprite at world position
+    /// Params:
+    ///   position = the position
+    ///   sprite = the sprite rendered at `position`
     public void renderAtWorldPosition(float[2] position, ref in Sprite sprite)
     {
         BeginMode2D(globalCamera);
@@ -243,10 +257,31 @@ public struct Renderer
         EndMode2D();
     }
 
+    /// Render a sprite at a relative screen position
+    /// Params:
+    ///   position = the position within range [0, 0] .. [1, 1], where [0, 0] -- upper left corner
+    ///   sprite = the sprite rendered at `position`
+    public void renderAtRelativeScreenPosition(float[2] position, ref in Sprite sprite)
+    {
+        import kernel.math;
 
+        immutable uint[2] resolution = getResolution();
 
+        uint[2] absolutePosition = [0, 0];
+
+        absolutePosition[0] =cast(uint) remap!float(position[0], 0, 1, 0, resolution[0]);
+        absolutePosition[1] = cast(uint) remap!float(position[1], 0, 1, 0, resolution[1]);
+
+        renderAtScreenPosition(absolutePosition, sprite);
+    }
+
+    /// Render a sprite at an absolute screen position
+    /// Params:
+    ///   position = the position
+    ///   sprite = the sprite rendered at `position`
     public void renderAtScreenPosition(uint[2] position, ref in Sprite sprite)
     {
+        import std.stdio; writeln(position);
         immutable auto source = Rectangle(0, 0, sprite.texture.width, sprite.texture.height);
 
         immutable auto destination = Rectangle(position[0], position[1], 
