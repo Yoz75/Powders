@@ -246,6 +246,10 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
         {
             direction2Biases = direction2LeftRightBiases;
         }
+        else if(adhesion.adhesion == 1)
+        {
+            direction2Biases = direction2DiagonalBiases;    
+        }
         else if(uniform01() < adhesion.adhesion)
         {
             direction2Biases = direction2DiagonalBiases;    
