@@ -12,7 +12,7 @@ import powders.io;
     mixin MakeJsonizable;
 
 public:
-    enum idSize = 12;
+    enum idSize = 16;
     /// The id of particle's type. Needed for creating/deleting etc.
     char[idSize] typeId;
     
