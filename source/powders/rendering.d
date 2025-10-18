@@ -98,15 +98,13 @@ private final class RenderableSystem : MapEntitySystem!MapRenderable
         assert(position.hasValue, "DEBUG: AT SOME REASON NOT EVERY ENTITY HAS A POSITION!!11!!1111111!!!!
          KERNEL PANIC!11 SEGMENTATION FAULT (CORE ISN'T DAMPED)");
 
-        import std.random;
-
-        ImageDrawPixel(&MapRenderSystem.instance.mapSprite.image, position.value.xy[0], position.value.xy[1],
-            cast(raylib.Color) renderable.color);   
+        MapRenderSystem.instance.mapSprite.setPixel(position.value.xy, renderable.color); 
     }
 }
 
 public struct Sprite
 {
+public:
     /// Sprite's tint color
     kc.Color color;
     /// Sprite's image
@@ -119,9 +117,9 @@ public struct Sprite
     float rotation;
 
     /// The raylib's texture for the sprite
-    Texture2D texture;
+    private Texture2D texture;
 
-    public static Sprite create(int[2] resolution)
+    static Sprite create(int[2] resolution)
     {
         Sprite sprite;
 
@@ -143,13 +141,18 @@ public struct Sprite
     /// Update texture's data after image manipulaton
     pragma(inline, true)
     {
-        public void applyChanges()
+        void setPixel(int[2] position, kc.Color color)
+        {
+            ImageDrawPixel(&image, position[0], position[1], cast(raylib.Color) color);   
+        }
+
+        void applyChanges()
         {
             UpdateTexture(texture, image.data);
         }
     }
 
-    public void free()
+    void free()
     {
         UnloadTexture(texture);
     }
