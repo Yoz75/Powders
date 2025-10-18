@@ -6,6 +6,8 @@ import powders.map;
 import powders.particle.register;
 import powders.io;
 
+alias ParticleId = char[Particle.idSize];
+
 /// Component, that has every particle
 @Component(Particle.stringof) public struct Particle
 {
@@ -14,7 +16,7 @@ import powders.io;
 public:
     enum idSize = 16;
     /// The id of particle's type. Needed for creating/deleting etc.
-    char[idSize] typeId;
+    ParticleId typeId;
     
     @JsonizeField this(string particle)
     {

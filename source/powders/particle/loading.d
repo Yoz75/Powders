@@ -32,7 +32,7 @@ public struct SerializedParticleType
     mixin MakeJsonizable;
 public:
     /// The id of particle
-    @JsonizeField char[Particle.idSize] typeID;
+    @JsonizeField ParticleId typeID;
     // The dictionary of raw .json values of components by their names
     @JsonizeField string[string] components;
 }
