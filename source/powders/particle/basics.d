@@ -242,7 +242,11 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
 
         float[2][2][GravityDirection] direction2Biases;
 
-        if(uniform01() < adhesion.adhesion)
+        if(adhesion.adhesion == 0)
+        {
+            direction2Biases = direction2LeftRightBiases;
+        }
+        else if(uniform01() < adhesion.adhesion)
         {
             direction2Biases = direction2DiagonalBiases;    
         }
