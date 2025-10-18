@@ -58,6 +58,37 @@ public int[2] mouse2MapSpritePosition()
     return mouseWorld2TexturePosition(MapRenderSystem.instance.mapSprite);
 }
 
+/// Convert position from range 0..resolution to 0..1
+/// Params:
+///   screenPosition = raw screen position
+/// Returns: 
+public float[2] screenPos2RelativeScreenPos(uint[2] screenPosition)
+{
+    import kernel.math;
+
+    immutable uint[2] resolution = globalRenderer.getResolution();
+    float[2] position;
+
+    position[0] = remap!float(screenPosition[0], 0, resolution[0], 0, 1);
+    position[1] = remap!float(screenPosition[1], 0, resolution[1], 0, 1);
+
+    return position;
+}
+
+public uint[2] relativeScreenPos2ScreenPos(float[2] relativePosition)
+{
+    import kernel.math;
+
+    immutable uint[2] resolution = globalRenderer.getResolution();
+
+    uint[2] absolutePosition = [0, 0];
+
+    absolutePosition[0] =cast(uint) remap!float(relativePosition[0], 0, 1, 0, resolution[0]);
+    absolutePosition[1] = cast(uint) remap!float(relativePosition[1], 0, 1, 0, resolution[1]);
+
+    return absolutePosition;
+}
+
 private final class MapRenderSystem : BaseSystem
 {
     static MapRenderSystem instance;
@@ -268,12 +299,7 @@ public struct Renderer
     {
         import kernel.math;
 
-        immutable uint[2] resolution = getResolution();
-
-        uint[2] absolutePosition = [0, 0];
-
-        absolutePosition[0] =cast(uint) remap!float(position[0], 0, 1, 0, resolution[0]);
-        absolutePosition[1] = cast(uint) remap!float(position[1], 0, 1, 0, resolution[1]);
+        auto absolutePosition = relativeScreenPos2ScreenPos(position);
 
         renderAtScreenPosition(absolutePosition, sprite);
     }

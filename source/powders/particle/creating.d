@@ -9,6 +9,7 @@ import powders.map;
 import powders.particle.register;
 import powders.particle.loading;
 import powders.particle.building;
+import powders.ui;
 
 mixin TODO!("STILL REMOVE THIS SHIT AND ADD GUI");
 
@@ -37,11 +38,31 @@ public class CreateParticleSystem : BaseSystem
         if(IsMouseButtonDown(0))
         {
             int[2] pos = mouse2MapSpritePosition();
+
+            if(pos[0] < 0 || pos[1] < 0) return; // So shit, but works
+
+            float[2] mousePos = Input.getMousePosition();
+            uint[2] uintPos;
+            uintPos[0] = cast(uint) mousePos[0];
+            uintPos[1]= cast(uint) mousePos[1];
+
+            if(isUnderUI(uintPos.screenPos2RelativeScreenPos)) return;
+
             buildParticle(globalMap.getAt(pos), selectedType);
         }
         else if(IsMouseButtonDown(1))
         {
             int[2] pos = mouse2MapSpritePosition();
+
+            if(pos[0] < 0 || pos[1] < 0) return; // ditto
+
+            float[2] mousePos = Input.getMousePosition();
+            uint[2] uintPos;
+            uintPos[0] = cast(uint) mousePos[0];
+            uintPos[1]= cast(uint) mousePos[1];
+
+            if(isUnderUI(uintPos.screenPos2RelativeScreenPos)) return;
+
             destroyParticle(globalMap.getAt(pos));
         }
     }
