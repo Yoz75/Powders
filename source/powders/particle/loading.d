@@ -7,6 +7,11 @@ import powders.particle.basics;
 import powders.particle.register;
 import std.file;
 
+/// Types, loaded by `tryLoadTypes`
+public SerializedParticleType[] globalLoadedTypes;
+/// Loaded types, but as dictionary
+public SerializedParticleType[ParticleId] globalTypesDictionary;
+
 /// Every exception, that occurs when loading particles from configs
 class ParticleLoadException : Exception
 {
@@ -37,12 +42,10 @@ public:
     @JsonizeField string[string] components;
 }
 
-/// Try load types from settings
-/// Returns: serialized types or null if there is no types
+/// Try load types from settings to `globalLoadedTypes`
 ///Throws: `ParticleTypeLoadException`
-public SerializedParticleType[] tryLoadTypes()
+public void tryLoadTypes()
 {
-    SerializedParticleType[] result;
     immutable string particlesDirectory = getSettingsPath() ~ "Particles" ~ pathSeparator;
 
     if(!exists(particlesDirectory))
@@ -58,7 +61,13 @@ public SerializedParticleType[] tryLoadTypes()
         if(!typeEntry.isDir()) continue;
         
         SerializedParticleType type;
-        type.typeID = typeEntry.name.split(pathSeparator)[$-1]; //get only the name of directory
+
+        // Foreach because if we just assign value some characters at the and of id will be null! 
+        // Idk why this happen, but it is what it is
+        foreach (i, char idChar; typeEntry.name.split(pathSeparator)[$-1]) //get only the name of directory
+        {
+            type.typeID[i] = idChar;
+        }
 
         foreach(componentEntry; dirEntries(typeEntry, SpanMode.shallow))
         {
@@ -77,8 +86,7 @@ public SerializedParticleType[] tryLoadTypes()
             type.components[componentName] = readText(componentEntry.name);
         }
 
-        result ~= type;
+        globalLoadedTypes ~= type;
+        globalTypesDictionary[type.typeID] = type;
     }
-
-    return result;
 }

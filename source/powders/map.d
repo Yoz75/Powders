@@ -112,6 +112,37 @@ public struct Map
         return map[position[1]][position[0]];
     }
 
+    /// Get neighbors of entity at `position`. The cell at [2][2] is the entity itself.
+    /// Params:
+    ///   position = the position
+    /// Returns: array of neighbors. [2][2] is the entity itself
+    public Entity[3][3] getNeighborsAt(int[2] position)
+    {
+        boundPosition(position);
+
+        Entity[3][3] result;
+
+        int relativeY;
+        for(int y = position[1] - 1; y <= position[1] + 1; y++)
+        {
+
+            int relativeX;
+            for(int x = position[0] - 1; x <= position[0] + 1; x++)
+            {
+                int[2] neighborPosition = [x, y];
+                boundPosition(neighborPosition);
+
+                result[relativeY][relativeX] = getAt(neighborPosition);
+
+                relativeX++;
+            }
+
+            relativeY++;
+        }
+
+        return result;
+    }
+
     /// Swap two entities on the map and update their Position components
     public void swap(Entity first, Entity second)
     {

@@ -26,6 +26,14 @@ public void buildParticle(Entity entity, SerializedParticleType type)
                 {
                     case getComponentAttributeOf!(Component).name:
                         pragma(msg, "MSG: registered a new component " ~ Component.stringof);
+                        
+                        static if(is(Component == Particle))
+                        {
+                            Component particle;
+                            particle.typeId = type.typeID;
+                            entity.addComponent!Component(particle);
+                            break LSwitch;
+                        }
 
                         // TLDR: add component using parsed from json value
                         // Find raw json data in AA of type by getting `Component` (attribute) of `Component` 
@@ -40,6 +48,8 @@ public void buildParticle(Entity entity, SerializedParticleType type)
                 throw new Exception("Not all components are foreached!");
         }
     }
+
+    entity.getComponent!Particle().value.typeId = type.typeID;
 }
 
 public void destroyParticle(Entity entity)

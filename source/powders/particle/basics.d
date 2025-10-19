@@ -17,11 +17,6 @@ public:
     enum idSize = 16;
     /// The id of particle's type. Needed for creating/deleting etc.
     ParticleId typeId;
-    
-    @JsonizeField this(string particle)
-    {
-        typeId[] = particle[0 .. $];
-    }
 }
 
 @Component(Temperature.stringof) public struct Temperature
@@ -81,6 +76,28 @@ public:
     @JsonizeField float adhesion = 1;
     /// Can the particle slip, or not?
     bool isActive;
+}
+
+/// A particle, that can turn into `result` when hits `other`
+@Component(Combine.stringof) public struct Combine
+{
+    mixin MakeJsonizable;
+public:
+    ParticleId otherId;
+    ParticleId resultId;
+
+    @JsonizeField this(string other, string result)
+    {
+        foreach(i, char otherChar; other)
+        {
+            otherId[i] = otherChar;
+        }
+
+        foreach(i, char resultChar; result)
+        {
+            resultId[i] = resultChar;
+        }
+    }
 }
 
 public class PowderSystem : MapEntitySystem!Powder
@@ -263,5 +280,36 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
 
         entity.getComponent!Powder().value.velocity[] = 
         direction2Biases[Gravity.direction][uniform(0, 2)][];
+    }
+}
+
+public class CombineSystem : MapEntitySystem!Combine
+{
+    protected override void updateComponent(Entity self, ref Combine combine)
+    {
+        import powders.particle.building;
+        import powders.particle.register;
+        import powders.particle.loading;
+
+        auto position = self.getComponent!Position().value.xy;
+
+        auto neighbors = globalMap.getNeighborsAt(position);
+
+        foreach (row; neighbors)
+        {
+            foreach(entity; row)
+            {
+                if(!entity.hasComponent!Particle) continue;
+                if(entity == self) continue;
+
+                auto entityId = entity.getComponent!Particle().value.typeId;
+
+                if(combine.otherId == entityId)
+                {
+                    auto serializedResult = globalTypesDictionary[combine.resultId];
+                    buildParticle(entity, serializedResult);
+                }        
+            }
+        }
     }
 }

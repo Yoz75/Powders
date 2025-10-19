@@ -15,18 +15,10 @@ mixin TODO!("STILL REMOVE THIS SHIT AND MAKE GENERIC GUI LIKE IN TPT");
 
 public class CreateParticleSystem : BaseSystem
 {
-    private SerializedParticleType[] types;
     private size_t selectedTypeIndex;
     
     public override void onCreated()
     {
-        types = tryLoadTypes();
-
-        if(types.length <= 0)
-        {
-            throw new Exception("There is no types in settings!");
-        }
-
         auto nextButton = new UIButton();
         nextButton.text = "next";
         nextButton.size = [0.1, 0.1];
@@ -43,13 +35,13 @@ public class CreateParticleSystem : BaseSystem
     private void nextType()
     {
         selectedTypeIndex++;
-        selectedTypeIndex %= types.length;
+        selectedTypeIndex %= globalLoadedTypes.length;
     }
 
     private void prevType()
     {
         selectedTypeIndex--;
-        selectedTypeIndex %= types.length;
+        selectedTypeIndex %= globalLoadedTypes.length;
     }
 
     protected override void update()
@@ -70,7 +62,7 @@ public class CreateParticleSystem : BaseSystem
 
             if(isUnderUI(uintPos.screenPos2RelativeScreenPos)) return;
 
-            buildParticle(globalMap.getAt(pos), types[selectedTypeIndex]);
+            buildParticle(globalMap.getAt(pos), globalLoadedTypes[selectedTypeIndex]);
         }
         else if(IsMouseButtonDown(1))
         {

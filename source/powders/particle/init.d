@@ -7,6 +7,7 @@ import powders.map;
 import powders.rendering;
 import powders.particle.basics;
 import powders.particle.register;
+import powders.particle.loading;
 import powders.particle.creating;
 
 /// System, that starts other systems in powders.particle module
@@ -15,6 +16,12 @@ public class InitialParticlesSystem : BaseSystem
     public override void onCreated()
     {
         registerDefaultModules();
+        tryLoadTypes();
+
+        if(globalLoadedTypes.length <= 0)
+        {
+            throw new Exception("There is no types in settings!");
+        }
 
         assert(globalMap != Map.init, "Initial particle system is being initialized, but map is still wasn't inited!");
         SystemFactory!PowderSystem.create();
@@ -22,6 +29,7 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!AdhesionSystem.create();
         SystemFactory!ChangeGravitySystem.create();
         SystemFactory!CreateParticleSystem.create();
+        SystemFactory!CombineSystem.create();
 
         immutable auto mapResolution = globalMap.resolution;
 
