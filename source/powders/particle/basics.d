@@ -307,7 +307,9 @@ public class CombineSystem : MapEntitySystem!Combine
                 if(combine.otherId == entityId)
                 {
                     auto serializedResult = globalTypesDictionary[combine.resultId];
-                    buildParticle(entity, serializedResult);
+                    destroyParticle(self);
+                    buildParticle(self, serializedResult);
+                    return;
                 }        
             }
         }
