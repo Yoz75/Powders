@@ -308,6 +308,7 @@ public class CombineSystem : MapEntitySystem!Combine
                 {
                     auto serializedResult = globalTypesDictionary[combine.resultId];
                     destroyParticle(self);
+                    destroyParticle(entity);
                     buildParticle(self, serializedResult);
                     return;
                 }        
