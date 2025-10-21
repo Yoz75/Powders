@@ -24,7 +24,7 @@ public void buildParticle(Entity entity, SerializedParticleType type)
             {
                 static foreach (Component; getComponentsInModule!(module_))
                 {
-                    case getComponentAttributeOf!(Component).name:
+                    case Component.stringof:
                         pragma(msg, "MSG: registered a new component " ~ Component.stringof);
                         
                         static if(is(Component == Particle))
@@ -39,7 +39,7 @@ public void buildParticle(Entity entity, SerializedParticleType type)
                         // Find raw json data in AA of type by getting `Component` (attribute) of `Component` 
                         // (type, that contains this attribute) and parse it
                         Component component = 
-                        fromJSONString!Component(type.components[getComponentAttributeOf!(Component).name]);
+                        fromJSONString!Component(type.components[Component.stringof]);
                         entity.addComponent!Component(component);
                     break LSwitch;
                 }
@@ -59,19 +59,26 @@ public void destroyParticle(Entity entity)
     if(!particle.hasValue) return;
 
     mixin TODO!("Try to make this think not by removing all components, but something else (like associative array)");
-    mixin TODO!("Also, make this not a kostyl. Maybe some information in component attribute, that says, should we
-     remove this component, set a special value to it or do nothing?");
     static foreach (module_; defaultModules)
     {
         static foreach (Component; getComponentsInModule!(module_))
         {
-            static if(!is(Component == Position) && !is(Component == MapRenderable))
             {
-                entity.removeComponent!Component();            
-            }
-            static if(is(Component == MapRenderable))
-            {
-                entity.getComponent!MapRenderable().value.color = black;
+                enum componentAttribute = getComponentAttributeOf!(Component);
+                enum onDestroyAction = componentAttribute.onDestroyAction;
+
+                static if(onDestroyAction == OnDestroyAction.destroy)
+                {
+                    entity.removeComponent!Component();
+                }
+                else static if(onDestroyAction == OnDestroyAction.setInit)
+                {
+                    entity.addComponent!Component(Component.init);
+                }
+                else static if(onDestroyAction == OnDestroyAction.keep)
+                {
+                    // do nothing, keep the component
+                }
             }
         }
     }

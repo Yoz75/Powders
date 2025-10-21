@@ -9,7 +9,7 @@ import powders.io;
 alias ParticleId = char[Particle.idSize];
 
 /// Component, that has every particle
-@Component(Particle.stringof) public struct Particle
+@Component(OnDestroyAction.destroy) public struct Particle
 {
     mixin MakeJsonizable;
 
@@ -19,7 +19,7 @@ public:
     ParticleId typeId;
 }
 
-@Component(Temperature.stringof) public struct Temperature
+@Component(OnDestroyAction.destroy) public struct Temperature
 {
     mixin MakeJsonizable;
 
@@ -44,7 +44,7 @@ public enum GravityDirection : int[2]
     right = [1, 0]
 }
 // Component that says that this entity is affected by gravity
-@Component(Gravity.stringof) public struct Gravity
+@Component(OnDestroyAction.destroy) public struct Gravity
 {
     mixin MakeJsonizable;
 
@@ -56,18 +56,18 @@ public:
 }
 
 /// Component that says that this entity can move (and fall) like sand
-@Component(Powder.stringof) public struct Powder
+@Component(OnDestroyAction.destroy) public struct Powder
 {
     mixin MakeJsonizable;
 
 public:
-    static float maxVelocity = 16;
+    static float maxVelocity = 512;
     /// Current velocity of the particle [x, y] in cells per update
     float[2] velocity = [0, 0];
 }
 
 /// A component that indicates slip particles
-@Component(Adhesion.stringof) public struct Adhesion
+@Component(OnDestroyAction.destroy) public struct Adhesion
 {
     mixin MakeJsonizable;
 
@@ -79,7 +79,7 @@ public:
 }
 
 /// A particle, that can turn into `result` when hits `other`
-@Component(Combine.stringof) public struct Combine
+@Component(OnDestroyAction.destroy) public struct Combine
 {
     mixin MakeJsonizable;
 public:

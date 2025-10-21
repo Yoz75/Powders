@@ -18,15 +18,26 @@ public __gshared Dummy[string] globalComponents;
 /// Default modules, that contain components
 public alias defaultModules = AliasSeq!(powders.particle.basics, powders.rendering);
 
+/// What we should do with component, when particle is being destroyed?
+public enum OnDestroyAction
+{
+    /// Destroy the component, when particle is being destroyed
+    destroy = 0,
+    /// Assign T.init value to the component when particle is being destroyed
+    setInit,
+    /// Keep component "as-is", when particle is being destroyed
+    keep
+}
+
 /// Attribute, that says that some struct is a component and can be serialized and deserialized as component
 public struct Component
 {
 public:
-    string name;
+    OnDestroyAction onDestroyAction;
 }
 
 /// Get all component structs in a module `name` as AliasSeq(Components...).
-/// This template returns types, that contain `Component` attribute, bot `Component` itself
+/// This template returns types, that contain `Component` attribute, but `Component` itself
 public template getComponentsInModule(alias name)
 {
     alias getComponentsInModule = getSymbolsByUDA!(name, Component);
@@ -43,11 +54,8 @@ public template getComponentAttributeOf(T)
 public void registerModule(alias name)()
 {
     static foreach (i, attributed; getComponentsInModule!(name))
-    {       
-        {            
-            Component component = getComponentAttributeOf!(attributed);
-            globalComponents[component.name] = Dummy();
-        }   
+    {    
+        globalComponents[attributed.stringof] = Dummy();
     }
 }
 

@@ -15,12 +15,12 @@ Camera2D globalCamera = Camera2D(Vector2(0, 0), Vector2(0, 0), 0, 1);
 Renderer globalRenderer;
 
 /// A thing, renderable on map
-@Component(MapRenderable.stringof) public struct MapRenderable
+@Component(OnDestroyAction.setInit) public struct MapRenderable
 {
     mixin MakeJsonizable;
 public:
     /// Main color
-    @JsonizeField kc.Color color;
+    @JsonizeField kc.Color color = kc.Color(0, 0, 0, 255);
 }
 
 /// System, that starts other systems in powders.rendering module
