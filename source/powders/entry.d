@@ -39,7 +39,7 @@ public void powdersMain()
     
     programVersion = Version.fromString(import("appVersion.txt"));
 
-    World gameWorld;
+    World gameWorld = World.create();
     
     immutable int width = GetScreenWidth();
     immutable int height = GetScreenHeight();

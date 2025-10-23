@@ -108,12 +108,12 @@ public struct ComponentPool(T)
 public struct Entity
 {
     /// Entity's world
-    public World* world;
+    public World world;
 
     /// Identificator, used for components
     private Id id_;
 
-    public static Entity create(World* world)
+    public static Entity create(ref World world)
     {
         return Entity(world, world.totalEntities_++);
     }
@@ -191,7 +191,7 @@ public final abstract class SystemFactory(T)
 /// Base class for systems. Needed only beause System(T) is tenplate class
 public abstract class BaseSystem
 {
-    protected World* currentWorld;
+    protected World currentWorld;
 
     /// Update system for each component
     public void update()

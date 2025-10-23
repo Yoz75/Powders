@@ -14,7 +14,7 @@ public final abstract class Simulation
         restart
     }
 
-    public static World* currentWorld;
+    public static World currentWorld;
     private static State state = State.none;
 
     /// Run the simulation with T... as start systems
@@ -29,7 +29,7 @@ public final abstract class Simulation
     {
     LStart:
 
-        currentWorld = &startWorld;
+        currentWorld = startWorld;
 
         {
             state = State.running;
