@@ -12,6 +12,8 @@ existing components!
 * LMB -- spawn a particle
 * RMB -- remove a particle
 * Currently you can change current spawn type by buttons on screen.
+* 1 -- select basic render mode
+* 2 -- select temperature render mode
 
 ## Building
 * build.bat -- debug build (very laggy!)
