@@ -21,6 +21,28 @@ public struct ComponentPool(T)
 
     private onRemoveAction[] onRemoveDelegates;
 
+    /// Reserve space for components in the world
+    /// Params:
+    ///   world = the world
+    ///   componentsCount = count of reserved components 
+    public void reserve(World world, size_t componentsCount)
+    {
+        // tryExtendData works with entitirs, so we make a kostyl
+        if(world.id >= data.length)
+        {
+            data.length = world.id + 1;
+        }
+
+        if(world.id >= entitiesHasTable.length)
+        {
+            entitiesHasTable.length = world.id + 1;
+        }
+
+        data[world.id].reserve(componentsCount);
+
+        entitiesHasTable[world.id].length = data[world.id].length;         
+    }
+
     /// Add component to entity
     /// Params:
     ///   entity = the entity

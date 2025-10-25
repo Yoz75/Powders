@@ -30,6 +30,7 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!ChangeGravitySystem.create();
         SystemFactory!CreateParticleSystem.create();
         SystemFactory!CombineSystem.create();
+        SystemFactory!TemperatureSystem.create();
 
         immutable auto mapResolution = globalMap.resolution;
 
@@ -39,6 +40,11 @@ public class InitialParticlesSystem : BaseSystem
             entity.addComponent!Particle(Particle.init);
             entity.addComponent!Temperature(Temperature.init);
             entity.getComponent!MapRenderable().value.color = white;
+        }
+
+        foreach(entity; globalMap)
+        {
+            entity.addComponent!Temperature(Temperature.init);
         }
     }
 }

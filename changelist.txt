@@ -1,0 +1,10 @@
+0.2.0:
+* Added this list
+* Fixed Combine component, now the particle, that contains that component turns into result, other particle is deleted
+* Made wet sand brighter and less green
+* Added stone
+* Reduced wet sand's adhesion
+* Replaced Simulation.currentWorld's type World* with World because there is no sence in pointer
+* Added temperature and temperature system. Added heat transfer
+* Added reserve function to kernel.ecs
+* Added render modes

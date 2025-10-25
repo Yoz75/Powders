@@ -31,6 +31,7 @@ public final class InitialRenderSystem : BaseSystem
         SystemFactory!InitRendererSystem.create();
         SystemFactory!MapRenderSystem.create();
         SystemFactory!RenderableSystem.create();
+        SystemFactory!RenderModeSystem.create();
     }
 }   
 
@@ -129,7 +130,44 @@ private final class RenderableSystem : MapEntitySystem!MapRenderable
         assert(position.hasValue, "DEBUG: AT SOME REASON NOT EVERY ENTITY HAS A POSITION!!11!!1111111!!!!
          KERNEL PANIC!11 SEGMENTATION FAULT (CORE ISN'T DAMPED)");
 
-        MapRenderSystem.instance.mapSprite.setPixel(position.value.xy, renderable.color); 
+        kc.Color color;
+
+        if(globalRenderer.currentRenderMode == RenderMode.temperature)
+        {
+            import kernel.math;
+            import powders.particle.basics : Temperature;
+
+            /// Maximal temperature, that rendered as a red color. Temperatures above this value are rendered as hot.
+            enum maxWarmTemperature = 1000.0;
+            enum maxHotTemperature = Temperature.max;
+
+            immutable double temperature = entity.getComponent!Temperature().value.value;
+
+            immutable ubyte normalizedWarm = 
+            cast(ubyte) remap(temperature, 0, maxWarmTemperature, 0, 255);
+
+            immutable ubyte normalizedHot = 
+            cast(ubyte) remap(temperature, maxWarmTemperature, maxHotTemperature, 200, 255);
+
+            immutable ubyte normalizedCold = 
+            cast(ubyte) remap(temperature, 0, Temperature.min, 0, 255);
+
+            ubyte warmColor = normalizedWarm * cast(ubyte) (temperature > 0 && temperature <= maxWarmTemperature);
+            ubyte hotColor = normalizedHot * cast(ubyte) (temperature > maxWarmTemperature);
+            ubyte coldColor = normalizedCold * cast(ubyte) (temperature < 0);
+
+            // If temperature > 0 -- warm colors (or hot if temperature is too big), if 0 -- black, else -- cold colors
+            color.r = cast(ubyte) (warmColor + hotColor);
+            color.g = hotColor;
+            color.b = cast(ubyte) (coldColor + hotColor);
+            color.a = 255;
+        }
+        else
+        {  
+            color = renderable.color;          
+        }
+
+        MapRenderSystem.instance.mapSprite.setPixel(position.value.xy, color); 
     }
 }
 
@@ -249,10 +287,19 @@ public int[2] mouseWorld2TexturePosition(ref in Sprite sprite)
     return [cast(int)tx, cast(int)ty];
 } 
 
-
+/// Render modes
+public enum RenderMode
+{
+    /// Render particle's color
+    color,
+    /// Render particle's temperature
+    temperature
+}
 /// Rendererstruct to render staff
 public struct Renderer
 {
+    public RenderMode currentRenderMode;
+
     public void startFrame() { BeginDrawing(); }
     public void endFrame() { EndDrawing(); }
 
@@ -320,5 +367,22 @@ public struct Renderer
         immutable auto origin = Vector2(sprite.origin[0], sprite.origin[1]);
 
         DrawTexturePro(sprite.texture, source, destination, origin, sprite.rotation, cast(raylib.Color) sprite.color);
+    }
+}
+
+private class RenderModeSystem : BaseSystem
+{
+    import powders.input;
+
+    protected override void update()
+    {
+        if(Input.isKeyDown(Keys.one))
+        {
+            globalRenderer.currentRenderMode = RenderMode.color;
+        }
+        else if(Input.isKeyDown(Keys.two))
+        {
+            globalRenderer.currentRenderMode = RenderMode.temperature;
+        }
     }
 }

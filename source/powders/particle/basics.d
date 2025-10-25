@@ -19,13 +19,18 @@ public:
     ParticleId typeId;
 }
 
-@Component(OnDestroyAction.destroy) public struct Temperature
+@Component(OnDestroyAction.setInit) public struct Temperature
 {
     mixin MakeJsonizable;
 
 public:
+    enum double min = -273.15;
+    enum double max = 100_000;
+
     /// Temperature of the particle (Celsius)
-    @JsonizeField double value = 0;
+    @JsonizeField double value = 25;
+    /// Coefficient of heat transfer's speed. Calculated as heat capacity of air / heat capacity of material.
+    @JsonizeField double heatTransfer = 1;
 }
 
 public enum MoveDirection : byte
@@ -314,5 +319,67 @@ public class CombineSystem : MapEntitySystem!Combine
                 }        
             }
         }
+    }
+}
+
+import kernel.todo;
+mixin TODO!("Currently TemperatureSystem is a bottleneck. Optimize it later!!!!");
+public class TemperatureSystem : MapEntitySystem!Temperature
+{
+    import dlib.container.dict;
+
+    /// Cache for temperature components because getComponent is slow
+    private Temperature*[] temperatureCache;
+
+    public override void onCreated()
+    {
+        immutable auto resolution = globalMap.resolution();
+
+        ComponentPool!Temperature.instance.reserve(currentWorld, resolution[0] * resolution[1]);
+        temperatureCache.reserve(resolution[0] * resolution[1]);
+
+        foreach(entity; globalMap)
+        {
+            temperatureCache ~= entity.getComponent!Temperature().value;
+        }
+    }
+
+    protected override void updateComponent(Entity entity, ref Temperature temperature)
+    {
+        import std.traits : EnumMembers;
+        enum cellsCount = 9;
+
+        enum NeighborBiases : int[2]
+        {
+            topLeft = [-1, 1],
+            top = [0, 1],
+            topRight = [1, 1],
+            left = [-1, 0],
+            right = [1, 0],
+            bottomLeft = [-1, -1],
+            bottom = [0, -1],
+            bottomRight = [1, -1],
+            self = [0, 0]
+        }
+        
+        double totalTemperature = 0;
+        
+        int[2] selfPosition = entity.getComponent!Position().value.xy;
+        int[2] neighborPosition;
+        Entity neighborEntity;
+        static foreach(bias; EnumMembers!NeighborBiases)
+        {
+            neighborPosition[] = selfPosition[] + bias[];
+            neighborEntity = globalMap.getAt(neighborPosition);
+
+            totalTemperature += temperatureCache[neighborEntity.id].value;
+        }
+
+        double delta = totalTemperature / cellsCount;
+
+        temperature.value += (delta - temperature.value) * temperature.heatTransfer;
+
+        import std.algorithm.comparison : clamp;
+        temperature.value.clamp(Temperature.min, Temperature.max);
     }
 }
