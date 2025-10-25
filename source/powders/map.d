@@ -2,7 +2,6 @@ module powders.map;
 
 import kernel.ecs;
 import kernel.simulation;
-import dlib.container.array;
 
 /// Global map instance. 
 public Map globalMap;
@@ -32,10 +31,8 @@ public abstract class MapEntitySystem(T) : System!T
 
 public struct Map
 {
-    // In this case 32 elements of static storage would be useless because nobody plays
-    // on 32x32 maps. But big values would be too huge for stack or executable size 
-    private Array!(Array!(Entity, 1), 1) map;
-    private Array!(Array!(Entity, 1), 1) tempMap; 
+    private Entity[][] map;
+    private Entity[][] tempMap; 
 
     public @property int[2] resolution()
     {
@@ -49,12 +46,10 @@ public struct Map
     ///   mapSize = map size. [0] is x and [1] is y
     public this(int[2] mapSize)
     {
-        map.resize(mapSize[1], Array!(Entity, 1).init);
-        tempMap.resize(mapSize[1], Array!(Entity, 1).init);
-
+        map.length = mapSize[1];
         foreach(y, ref row; map)
         {
-            row.resize(mapSize[0], Entity.init);
+            row.length = mapSize[0];
 
             foreach(x, ref entity; row)
             {
@@ -63,9 +58,10 @@ public struct Map
             }
         }
 
+        tempMap.length = mapSize[1];
         foreach(y, ref row; tempMap)
         {
-            row.resize(mapSize[0], Entity.init);
+            row.length = mapSize[1];
 
             foreach(x, ref entity; row)
             {
@@ -173,17 +169,6 @@ public struct Map
             }
         }
     }
-
-    /// Free all resources
-    public void free()
-    {
-        foreach(y, ref row; map)
-        {
-            row.free();
-        }
-
-        map.free();
-    }    
 
     /// Bound position to map coordinates
     /// Params:
