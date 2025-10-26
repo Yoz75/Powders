@@ -13,7 +13,7 @@ struct Dummy
 
 }
 /// All found components
-public shared Dummy[string] globalComponents;
+public Dummy[string] globalComponents;
 
 /// Default modules, that contain components
 public alias defaultModules = AliasSeq!(powders.particle.basics, powders.rendering);
