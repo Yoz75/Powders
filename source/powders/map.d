@@ -115,13 +115,11 @@ public struct Map
     public Entity[3][3] getNeighborsAt(int[2] position)
     {
         boundPosition(position);
-
         Entity[3][3] result;
 
         int relativeY;
         for(int y = position[1] - 1; y <= position[1] + 1; y++)
         {
-
             int relativeX;
             for(int x = position[0] - 1; x <= position[0] + 1; x++)
             {
@@ -162,7 +160,6 @@ public struct Map
 
         foreach(y, ref row; tempMap)
         {
-
             foreach(x, ref entity; row)
             {
                 entity = map[y][x];
@@ -175,9 +172,11 @@ public struct Map
     ///   position = the position, this parameter is ref and WILL BE bounded.
     pragma(inline, true) public void boundPosition(ref int[2] position)
     {
-        if(position[0] < 0) position[0] = resolution[0] - 1;
-        if(position[1] < 0) position[1] = resolution[1] - 1;
+        immutable int[2] mapResolution = this.resolution;
 
-        position[] %= resolution[];
+        if(position[0] < 0) position[0] = mapResolution[0] - 1;
+        if(position[1] < 0) position[1] = mapResolution[1] - 1;
+
+        position[] %= mapResolution[];
     }
 }
