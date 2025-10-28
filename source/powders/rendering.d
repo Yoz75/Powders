@@ -126,8 +126,8 @@ private final class RenderableSystem : MapEntitySystem!MapRenderable
 
     protected override void updateComponent(Entity entity, ref MapRenderable renderable)
     {
-        auto position = entity.getComponent!Position();
-        assert(position.hasValue, "DEBUG: AT SOME REASON NOT EVERY ENTITY HAS A POSITION!!11!!1111111!!!!
+        bool hasPosition = entity.hasComponent!Position();
+        assert(hasPosition, "DEBUG: AT SOME REASON NOT EVERY ENTITY HAS A POSITION!!11!!1111111!!!!
          KERNEL PANIC!11 SEGMENTATION FAULT (CORE ISN'T DAMPED)");
 
         kc.Color color;
@@ -141,7 +141,7 @@ private final class RenderableSystem : MapEntitySystem!MapRenderable
             enum maxWarmTemperature = 1000.0;
             enum maxHotTemperature = Temperature.max;
 
-            immutable double temperature = entity.getComponent!Temperature().value.value;
+            immutable double temperature = entity.getComponent!Temperature().value;
 
             immutable ubyte normalizedWarm = 
             cast(ubyte) remap(temperature, 0, maxWarmTemperature, 0, 255);
@@ -167,7 +167,8 @@ private final class RenderableSystem : MapEntitySystem!MapRenderable
             color = renderable.color;          
         }
 
-        MapRenderSystem.instance.mapSprite.setPixel(position.value.xy, color); 
+        auto position = entity.getComponent!Position();
+        MapRenderSystem.instance.mapSprite.setPixel(position.xy, color); 
     }
 }
 

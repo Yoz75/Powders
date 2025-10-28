@@ -112,11 +112,12 @@ public class PowderSystem : MapEntitySystem!Powder
         import std.math : round;
         import std.algorithm : clamp;
 
-        auto adhesion = entity.getComponent!Adhesion();
+        bool hasAdhesion = entity.hasComponent!Adhesion();
+        ref Adhesion adhesion = entity.getComponent!Adhesion();
 
-        if(adhesion.hasValue) adhesion.value.isActive = false;
+        if(hasAdhesion) adhesion.isActive = false;
 
-        auto currentPosition = entity.getComponent!Position().value.xy;
+        auto currentPosition = entity.getComponent!Position().xy;
 
         if (powder.velocity[0] == 0 && powder.velocity[1] == 0)
             return;
@@ -134,7 +135,7 @@ public class PowderSystem : MapEntitySystem!Powder
         if(finalPosition == currentPosition)
         {
             powder.velocity = [0, 0];
-            if(adhesion.hasValue) adhesion.value.isActive = true;
+            if(hasAdhesion) adhesion.isActive = true;
             return;
         }
 
@@ -183,8 +184,8 @@ public class GravitySystem : MapEntitySystem!Gravity
     {
         if(entity.hasComponent!Powder())
         {
-            auto sand = entity.getComponent!Powder().value;
-            sand.velocity[] += Gravity.direction[] * gravity.gravity * gravity.mass;
+            ref Powder powder = entity.getComponent!Powder();
+            powder.velocity[] += Gravity.direction[] * gravity.gravity * gravity.mass;
         }
     }
 }
@@ -229,7 +230,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
             
         if(!adhesion.isActive) return;
         
-        auto position = entity.getComponent!Position().value;
+        auto position = entity.getComponent!Position();
 
         int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
 
@@ -283,7 +284,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
             direction2Biases = direction2LeftRightBiases;
         }
 
-        entity.getComponent!Powder().value.velocity[] = 
+        entity.getComponent!Powder().velocity[] = 
         direction2Biases[Gravity.direction][uniform(0, 2)][];
     }
 }
@@ -296,7 +297,7 @@ public class CombineSystem : MapEntitySystem!Combine
         import powders.particle.register;
         import powders.particle.loading;
 
-        auto position = self.getComponent!Position().value.xy;
+        auto position = self.getComponent!Position().xy;
 
         auto neighbors = globalMap.getNeighborsAt(position);
 
@@ -307,7 +308,7 @@ public class CombineSystem : MapEntitySystem!Combine
                 if(!entity.hasComponent!Particle) continue;
                 if(entity == self) continue;
 
-                auto entityId = entity.getComponent!Particle().value.typeId;
+                auto entityId = entity.getComponent!Particle().typeId;
 
                 if(combine.otherId == entityId)
                 {
@@ -330,6 +331,7 @@ public class TemperatureSystem : MapEntitySystem!Temperature
 
     /// Cache for temperature components because getComponent is slow
     private Temperature*[] temperatureCache;
+    private Position*[] positionCache;
 
     public override void onCreated()
     {
@@ -337,10 +339,12 @@ public class TemperatureSystem : MapEntitySystem!Temperature
 
         ComponentPool!Temperature.instance.reserve(currentWorld, resolution[0] * resolution[1]);
         temperatureCache.reserve(resolution[0] * resolution[1]);
+        positionCache.reserve(resolution[0] * resolution[1]);
 
         foreach(entity; globalMap)
         {
-            temperatureCache ~= entity.getComponent!Temperature().value;
+            temperatureCache ~= &entity.getComponent!Temperature();
+            positionCache ~= &entity.getComponent!Position();
         }
     }
 
@@ -364,7 +368,7 @@ public class TemperatureSystem : MapEntitySystem!Temperature
         
         double totalTemperature = 0;
         
-        int[2] selfPosition = entity.getComponent!Position().value.xy;
+        int[2] selfPosition = positionCache[entity.id].xy;
         int[2] neighborPosition;
         Entity neighborEntity;
         static foreach(bias; EnumMembers!NeighborBiases)

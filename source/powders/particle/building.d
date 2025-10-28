@@ -49,14 +49,14 @@ public void buildParticle(Entity entity, SerializedParticleType type)
         }
     }
 
-    entity.getComponent!Particle().value.typeId = type.typeID;
+    entity.getComponent!Particle().typeId = type.typeID;
 }
 
 public void destroyParticle(Entity entity)
 {
-    auto particle = entity.getComponent!Particle();
+    bool hasParticle = entity.hasComponent!Particle();
 
-    if(!particle.hasValue) return;
+    if(!hasParticle) return;
 
     mixin TODO!("Try to make this think not by removing all components, but something else (like associative array)");
     static foreach (module_; defaultModules)

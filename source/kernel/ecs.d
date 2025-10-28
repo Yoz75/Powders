@@ -78,15 +78,12 @@ public struct ComponentPool(T)
     /// Get component for entity
     /// Params:
     ///   entity = the entity
-    /// Returns: optional with TResult as T* and TError as bool. Entity doens't have this component,
+    /// Returns: the component value. Check if this value valid with `hasComponent`` method
     // when error is true
-    public Optional!(T*, bool) getComponent(Entity entity)
+    public ref T getComponent(Entity entity)
     {
         tryExtendData(entity);
-
-        bool isValid = entitiesHasTable[entity.world.id][entity.id];
-
-        return Optional!(T*, bool)(&data[entity.world.id][entity.id], !isValid, isValid);
+        return data[entity.world.id][entity.id];
     }
 
     public bool hasComponent(Entity entity)
@@ -173,7 +170,7 @@ pragma(inline, true):
     }
 
     /// Shortcut for ComponentPool!T.instance.getComponent. See ComponentPool.getComponent
-    public Optional!(T*, bool) getComponent(T)()
+    public ref T getComponent(T)()
     {
         return ComponentPool!T.instance.getComponent(this);
     }

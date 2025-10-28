@@ -20,9 +20,10 @@ public abstract class MapEntitySystem(T) : System!T
     {
         foreach(ref entity; globalMap)
         {
-            auto component = entity.getComponent!T();
-            if(component.hasValue)
-            updateComponent(entity, *component.value);
+            if(!entity.hasComponent!T()) continue;
+
+            ref T component = entity.getComponent!T();
+            updateComponent(entity, component);
         } 
     }
 
@@ -140,9 +141,9 @@ public struct Map
     /// Swap two entities on the map and update their Position components
     public void swap(Entity first, Entity second)
     {
-        Position* firstPos = first.getComponent!Position().value;
-        Position* secondPos = second.getComponent!Position().value;
-        Position temp = *firstPos;     
+        ref Position firstPos = first.getComponent!Position();
+        ref Position secondPos = second.getComponent!Position();
+        Position temp = firstPos;     
 
         tempMap[firstPos.xy[1]][firstPos.xy[0]] = second;
         tempMap[secondPos.xy[1]][secondPos.xy[0]] = first;

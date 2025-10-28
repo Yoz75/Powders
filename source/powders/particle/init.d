@@ -39,7 +39,7 @@ public class InitialParticlesSystem : BaseSystem
             auto entity = globalMap.getAt([i, mapResolution[1] - 1]);
             entity.addComponent!Particle(Particle.init);
             entity.addComponent!Temperature(Temperature.init);
-            entity.getComponent!MapRenderable().value.color = white;
+            entity.getComponent!MapRenderable().color = white;
         }
 
         foreach(entity; globalMap)
