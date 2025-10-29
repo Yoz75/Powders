@@ -9,6 +9,7 @@ BaseSystem[] systems;
 
 alias Id = size_t;
 alias onRemoveAction = void delegate(Entity entity);
+alias onAddAction = void delegate(Entity entity);
 
 /// Component pool for entities in the simulation
 public struct ComponentPool(T)
@@ -19,6 +20,7 @@ public struct ComponentPool(T)
     // is entity [worldId][i] has this component or not?
     private BitArray[] entitiesHasTable;
 
+    private onAddAction[] onAddDelegates;
     private onRemoveAction[] onRemoveDelegates;
 
     /// Reserve space for components in the world
@@ -53,6 +55,11 @@ public struct ComponentPool(T)
 
         data[entity.world.id][entity.id] = value;
         entitiesHasTable[entity.world.id][entity.id] = true;
+
+        foreach(onAddDelegate; onAddDelegates)
+        {
+            onAddDelegate(entity);
+        }
     }
 
     /// Remove component from entity. If entity already doesn't have this component, nothing will happen
@@ -73,6 +80,11 @@ public struct ComponentPool(T)
     public void addOnRemoveAction(scope onRemoveAction action)
     {
         onRemoveDelegates ~= action;
+    }
+
+    public void addOnAddAction(scope onAddAction action)
+    {
+        onAddDelegates ~= action;
     }
 
     /// Get component for entity
@@ -253,12 +265,21 @@ public abstract class System(T) : BaseSystem
     {
         instance = this;
         ComponentPool!T.instance.addOnRemoveAction(&onRemove);
+        ComponentPool!T.instance.addOnAddAction(&onAdd);
+    }
+
+    /// Calls when T component was added to entity
+    /// Params:
+    ///   entity = the entity
+    protected void onAdd(Entity entity)
+    {
+        //nothing
     }
 
     /// Calls when T component was removed from entity
     /// Params:
     ///   entity = the entity
-    public void onRemove(Entity entity)
+    protected void onRemove(Entity entity)
     {
         //nothing
     }
