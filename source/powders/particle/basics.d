@@ -51,8 +51,6 @@ public enum GravityDirection : int[2]
 public:
     static GravityDirection direction = GravityDirection.down;
     static float gravity = 9.81;
-    /// Particle's mass
-    @JsonizeField float mass = 1;
 }
 
 /// Component that says that this entity can move (and fall) like sand
