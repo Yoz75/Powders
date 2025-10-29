@@ -35,13 +35,6 @@ public:
     @JsonizeField double heatTransfer = 1;
 }
 
-public enum MoveDirection : byte
-{
-    none = 0,
-    negative = -1,
-    positive = 1
-}
-
 public enum GravityDirection : int[2]
 {
     none = [0, 0],
@@ -127,7 +120,7 @@ public class PowderSystem : MapEntitySystem!Powder
         powder.velocity[0] = powder.velocity[0].clamp(-Powder.maxVelocity, Powder.maxVelocity);
         powder.velocity[1] = powder.velocity[1].clamp(-Powder.maxVelocity, Powder.maxVelocity);
 
-        int[2] roundedVelocity = [cast(int) powder.velocity[0].round, cast(int) powder.velocity[1].round];
+        int[2] roundedVelocity = [cast(int) powder.velocity[0], cast(int) powder.velocity[1]];
 
         int[2] targetPosition;
         targetPosition[] = currentPosition[] + roundedVelocity[];
@@ -187,7 +180,7 @@ public class GravitySystem : MapEntitySystem!Gravity
         if(entity.hasComponent!Powder())
         {
             ref Powder powder = entity.getComponent!Powder();
-            powder.velocity[] += Gravity.direction[] * gravity.gravity * gravity.mass;
+            powder.velocity[] += Gravity.direction[] * gravity.gravity;
         }
     }
 }
@@ -295,6 +288,7 @@ public class CombineSystem : MapEntitySystem!Combine
 {
     protected override void updateComponent(Entity self, ref Chunk chunk, ref Combine combine)
     {
+        return;
         import powders.particle.building;
         import powders.particle.register;
         import powders.particle.loading;
@@ -427,10 +421,5 @@ public class TemperatureSystem : MapEntitySystem!Temperature
 
         temperature.value = temperature.value.clamp(Temperature.min, Temperature.max);
         temperature.value = temperature.value.quantize(Temperature.threshold);
-    }
-
-    private void updateAirHeat()
-    {
-
     }
 }
