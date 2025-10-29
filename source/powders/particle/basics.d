@@ -24,6 +24,8 @@ public:
     mixin MakeJsonizable;
 
 public:
+    /// The least fractional part of temperature
+    enum double threshold = 0.01;
     enum double min = -273.15;
     enum double max = 100_000;
 
@@ -324,22 +326,21 @@ public class CombineSystem : MapEntitySystem!Combine
 }
 
 import kernel.todo;
-mixin TODO!("Currently TemperatureSystem is a bottleneck. Optimize it later!!!!");
+mixin TODO!("Currently TemperatureSystem is broken when process ambient heat, fix later!");
 public class TemperatureSystem : MapEntitySystem!Temperature
 {
-    import dlib.container.dict;
-
     /// Cache for temperature components because getComponent is slow
     private Temperature*[] temperatureCache;
     private Position*[] positionCache;
+    private int[2] mapResolution;
 
     public override void onCreated()
     {
-        immutable auto resolution = globalMap.resolution();
+        mapResolution = globalMap.resolution();
 
-        ComponentPool!Temperature.instance.reserve(currentWorld, resolution[0] * resolution[1]);
-        temperatureCache.reserve(resolution[0] * resolution[1]);
-        positionCache.reserve(resolution[0] * resolution[1]);
+        ComponentPool!Temperature.instance.reserve(currentWorld, mapResolution[0] * mapResolution[1]);
+        temperatureCache.reserve(mapResolution[0] * mapResolution[1]);
+        positionCache.reserve(mapResolution[0] * mapResolution[1]);
 
         foreach(entity; globalMap)
         {
@@ -348,9 +349,20 @@ public class TemperatureSystem : MapEntitySystem!Temperature
         }
     }
 
+    protected override void onAdd(Entity entity)
     {
+        immutable int[2] position = entity.getComponent!Position().xy;
+        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
+
+        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
+    }
+
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Temperature temperature)
+    {
+        import std.math;
+        import std.algorithm.comparison : clamp;
         import std.traits : EnumMembers;
+
         enum cellsCount = 9;
 
         enum NeighborBiases : int[2]
@@ -370,10 +382,16 @@ public class TemperatureSystem : MapEntitySystem!Temperature
         
         int[2] selfPosition = positionCache[entity.id].xy;
         int[2] neighborPosition;
+        int[2] neighborChunkIndex;
         Entity neighborEntity;
+
         static foreach(bias; EnumMembers!NeighborBiases)
         {
             neighborPosition[] = selfPosition[] + bias[];
+
+            neighborPosition[0] = neighborPosition[0] - cast(int)(1 * neighborPosition[0] >= mapResolution[0]);
+            neighborPosition[1] = neighborPosition[1] - cast(int)(1 * neighborPosition[1] >= mapResolution[1]);            
+            
             neighborEntity = globalMap.getAt(neighborPosition);
 
             totalTemperature += temperatureCache[neighborEntity.id].value;
@@ -381,9 +399,38 @@ public class TemperatureSystem : MapEntitySystem!Temperature
 
         double delta = totalTemperature / cellsCount;
 
-        temperature.value += (delta - temperature.value) * temperature.heatTransfer;
+        double resultDelta = (delta - temperature.value) * temperature.heatTransfer;
+        resultDelta = resultDelta.quantize(Temperature.threshold);
 
-        import std.algorithm.comparison : clamp;
-        temperature.value.clamp(Temperature.min, Temperature.max);
+        if(resultDelta == 0)
+        {
+            chunk.state = ChunkState.clean;
+            return;
+        }
+        else
+        {
+            chunk.state = ChunkState.dirty;
+
+            static foreach(bias; EnumMembers!NeighborBiases)
+            {
+                neighborPosition[] = selfPosition[] + bias[];
+
+                neighborPosition[0] = neighborPosition[0] - cast(int)(1 * neighborPosition[0] >= mapResolution[0]);
+                neighborPosition[1] = neighborPosition[1] - cast(int)(1 * neighborPosition[1] >= mapResolution[1]);
+
+                neighborChunkIndex = Chunk.world2ChunkIndex(neighborPosition);
+                chunks[neighborChunkIndex[1]][neighborChunkIndex[0]].state = ChunkState.dirty;
+            }            
+        }
+
+        temperature.value += resultDelta;
+
+        temperature.value = temperature.value.clamp(Temperature.min, Temperature.max);
+        temperature.value = temperature.value.quantize(Temperature.threshold);
+    }
+
+    private void updateAirHeat()
+    {
+
     }
 }
