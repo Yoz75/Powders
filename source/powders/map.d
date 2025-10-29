@@ -49,32 +49,18 @@ public abstract class MapEntitySystem(T) : System!T
     }
 
     protected Chunk[][] chunks;
+    private Chunk[][] tempChunks;
 
     public this()
     {
         super();
 
-        assert(globalMap !is Map.init, "MapEntitySystem is being initialized before globalMap is initialized!");
+        assert(globalMap != Map.init, "MapEntitySystem is being initialized before globalMap is initialized!");
 
-        immutable int[2] resolution = globalMap.resolution;
+        initChunks(chunks, globalMap.map);
+        initChunks(tempChunks, globalMap.tempMap);
 
-        chunks = new Chunk[][resolution[1] / Map.chunkSize];
-        foreach(j, ref row; chunks)
-        {
-            row = new Chunk[resolution[0] / Map.chunkSize];
-
-            foreach(i, ref chunk; row)
-            {
-                chunk.data = new Entity[][Map.chunkSize];
-
-                foreach(y, ref chunkRow; chunk.data)
-                {
-                    chunkRow = new Entity[Map.chunkSize];
-                    chunkRow = globalMap.map[j * Map.chunkSize + y]
-                     [i * Map.chunkSize .. i * Map.chunkSize + Map.chunkSize];
-                }
-            }
-        }
+        globalMap.onFinalizeTick ~= &swapChunks;
     }
 
     /// Make the chunk containing the `position` dirty
@@ -109,12 +95,48 @@ public abstract class MapEntitySystem(T) : System!T
     }
 
     protected abstract void updateComponent(Entity entity, ref Chunk chunk, ref T component);
+
+    private void swapChunks()
+    {
+        auto temp = chunks;
+        chunks = tempChunks;
+        tempChunks = temp;
+    }
+
+    private void initChunks(ref Chunk[][] chunks, Entity[][] map)
+    {
+        immutable int[2] resolution = globalMap.resolution;
+
+        chunks = new Chunk[][resolution[1] / Map.chunkSize];
+        foreach(j, ref row; chunks)
+        {
+            row = new Chunk[resolution[0] / Map.chunkSize];
+
+            foreach(i, ref chunk; row)
+            {
+                chunk.data = new Entity[][Map.chunkSize];
+
+                foreach(y, ref chunkRow; chunk.data)
+                {
+                    chunkRow = new Entity[Map.chunkSize];
+                    chunkRow = map[j * Map.chunkSize + y]
+                     [i * Map.chunkSize .. i * Map.chunkSize + Map.chunkSize];
+                }
+            }
+        }
+    }
 }
+
+
+alias FinaizeTickAction = void delegate();
 
 public struct Map
 {
     /// Map must be made of blocks with this size!
     public enum chunkSize = 16;
+
+    /// Actiond, that invoked when map finalized tick
+    public FinaizeTickAction[] onFinalizeTick;
 
     private Entity[][] map;
     private Entity[][] tempMap; 
@@ -256,6 +278,11 @@ public struct Map
             {
                 entity = map[y][x];
             }
+        }
+
+        foreach(action; onFinalizeTick)
+        {
+            action();
         }
     }
 
