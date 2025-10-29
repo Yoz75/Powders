@@ -107,7 +107,7 @@ public:
 
 public class PowderSystem : MapEntitySystem!Powder
 {
-    protected override void updateComponent(Entity entity, ref Powder powder)
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Powder powder)
     {
         import std.math : round;
         import std.algorithm : clamp;
@@ -180,7 +180,7 @@ public class PowderSystem : MapEntitySystem!Powder
 
 public class GravitySystem : MapEntitySystem!Gravity
 {
-    protected override void updateComponent(Entity entity, ref Gravity gravity)
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Gravity gravity)
     {
         if(entity.hasComponent!Powder())
         {
@@ -222,7 +222,7 @@ public class ChangeGravitySystem : BaseSystem
 
 public class AdhesionSystem : MapEntitySystem!Adhesion
 {
-    protected override void updateComponent(Entity entity, ref Adhesion adhesion)
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Adhesion adhesion)
     {
         import std.random;
 
@@ -291,7 +291,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
 
 public class CombineSystem : MapEntitySystem!Combine
 {
-    protected override void updateComponent(Entity self, ref Combine combine)
+    protected override void updateComponent(Entity self, ref Chunk chunk, ref Combine combine)
     {
         import powders.particle.building;
         import powders.particle.register;
@@ -348,8 +348,8 @@ public class TemperatureSystem : MapEntitySystem!Temperature
         }
     }
 
-    protected override void updateComponent(Entity entity, ref Temperature temperature)
     {
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Temperature temperature)
         import std.traits : EnumMembers;
         enum cellsCount = 9;
 

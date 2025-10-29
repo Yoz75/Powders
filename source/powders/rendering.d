@@ -124,7 +124,7 @@ private final class RenderableSystem : MapEntitySystem!MapRenderable
 {
     import raylib;
 
-    protected override void updateComponent(Entity entity, ref MapRenderable renderable)
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref MapRenderable renderable)
     {
         bool hasPosition = entity.hasComponent!Position();
         assert(hasPosition, "DEBUG: AT SOME REASON NOT EVERY ENTITY HAS A POSITION!!11!!1111111!!!!
@@ -166,7 +166,7 @@ private final class RenderableSystem : MapEntitySystem!MapRenderable
         {  
             color = renderable.color;          
         }
-
+        
         auto position = entity.getComponent!Position();
         MapRenderSystem.instance.mapSprite.setPixel(position.xy, color); 
     }
