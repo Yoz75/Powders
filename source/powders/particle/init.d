@@ -24,6 +24,7 @@ public class InitialParticlesSystem : BaseSystem
         }
 
         assert(globalMap != Map.init, "Initial particle system is being initialized, but map is still wasn't inited!");
+
         SystemFactory!PowderSystem.create();
         SystemFactory!GravitySystem.create();
         SystemFactory!AdhesionSystem.create();
@@ -31,6 +32,7 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!CreateParticleSystem.create();
         SystemFactory!CombineSystem.create();
         SystemFactory!TemperatureSystem.create();
+        SystemFactory!DeltaTemperatureSystem.create();
 
         immutable auto mapResolution = globalMap.resolution;
 

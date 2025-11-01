@@ -26,13 +26,52 @@ public:
 public:
     /// The least fractional part of temperature
     enum double threshold = 0.01;
+
     enum double min = -273.15;
     enum double max = 100_000;
 
-    /// Temperature of the particle (Celsius)
-    @JsonizeField double value = 25;
-    /// Coefficient of heat transfer's speed. Calculated as heat capacity of air / heat capacity of material.
-    @JsonizeField double heatTransfer = 1;
+    enum double maxCondictivity = 2200;
+    enum double minConductivity = 0;
+    enum double defaultConductivity = 1500;
+
+    /// Scale of conductivity normalisation
+    enum conductivityScale = 250;
+
+    enum double airHeatCapacity = 1005;
+    enum double defaultTemperature = 25;
+
+    /// The heat capacity. 
+    /// Indicates how much a substance will "pull the resulting temperature onto itself" during heat exchange
+    double heatCapacity = airHeatCapacity;
+
+    /// How fast particle changes it's temperature.
+    double transferCoefficient = 1;
+
+    /// Temperature of a particle in degrees Celsius
+    double value = defaultTemperature; 
+
+    @JsonizeField this(double value, double heatCapacity, double thermalConductivity = defaultConductivity)
+    {
+        import std.math;
+        this.value = value;
+        this.heatCapacity = heatCapacity;
+
+        // Logarithmic compression because we want both water (0.603) and diamonds (2200) would had
+        // at least a little similar transfer coefficients
+        transferCoefficient = (log(1 + conductivityScale * thermalConductivity)) / 
+         (log(conductivityScale * maxCondictivity));
+    }
+}
+
+/// A Kostyl, that's needed to increase or decrease temperature
+public @Component(OnDestroyAction.destroy) struct DeltaTemperature
+{
+    mixin MakeJsonizable;
+
+
+public:
+
+    @JsonizeField double delta;
 }
 
 public enum GravityDirection : int[2]
@@ -323,7 +362,17 @@ public class TemperatureSystem : MapEntitySystem!Temperature
     /// Cache for temperature components because getComponent is slow
     private Temperature*[] temperatureCache;
     private Position*[] positionCache;
+
     private int[2] mapResolution;
+
+    /// Mark that entity was updated and it's chunk must be recomputed
+    private void markUpdated(Entity entity)
+    {
+        immutable int[2] position = entity.getComponent!Position().xy;
+        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
+
+        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
+    }
 
     public override void onCreated()
     {
@@ -342,10 +391,7 @@ public class TemperatureSystem : MapEntitySystem!Temperature
 
     protected override void onAdd(Entity entity)
     {
-        immutable int[2] position = entity.getComponent!Position().xy;
-        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
-
-        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
+        markUpdated(entity);
     }
 
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Temperature temperature)
@@ -353,8 +399,6 @@ public class TemperatureSystem : MapEntitySystem!Temperature
         import std.math;
         import std.algorithm.comparison : clamp;
         import std.traits : EnumMembers;
-
-        enum cellsCount = 9;
 
         enum NeighborBiases : int[2]
         {
@@ -369,31 +413,39 @@ public class TemperatureSystem : MapEntitySystem!Temperature
             self = [0, 0]
         }
         
-        double totalTemperature = 0;
-        
         int[2] selfPosition = positionCache[entity.id].xy;
         int[2] neighborPosition;
         int[2] neighborChunkIndex;
         Entity neighborEntity;
 
+        bool isValidNeighbor, wasAnyTransfer;
+        Temperature* neighborTemperature;
+        double resultTemperature = 0, selfDelta = 0, neighborDelta = 0;
+
+        immutable bool isValidParticle = entity.hasComponent!Particle;
+        
         static foreach(bias; EnumMembers!NeighborBiases)
         {
             neighborPosition[] = selfPosition[] + bias[];
-
-            neighborPosition[0] = neighborPosition[0] - cast(int)(1 * neighborPosition[0] >= mapResolution[0]);
-            neighborPosition[1] = neighborPosition[1] - cast(int)(1 * neighborPosition[1] >= mapResolution[1]);            
-            
             neighborEntity = globalMap.getAt(neighborPosition);
+            neighborTemperature = &neighborEntity.getComponent!Temperature();
+    
+            isValidNeighbor = neighborEntity.hasComponent!Particle();
 
-            totalTemperature += temperatureCache[neighborEntity.id].value;
+            wasAnyTransfer |= isValidNeighbor & (temperature.value != neighborTemperature.value);
+
+            resultTemperature = (temperature.heatCapacity * temperature.value + 
+            neighborTemperature.heatCapacity * neighborTemperature.value) / 
+            (temperature.heatCapacity + neighborTemperature.heatCapacity);
+
+            selfDelta = (resultTemperature - temperature.value) * temperature.transferCoefficient;
+            neighborDelta = (resultTemperature - neighborTemperature.value) * neighborTemperature.transferCoefficient;
+
+            temperature.value += isValidNeighbor & isValidParticle ? selfDelta : 0;
+            neighborTemperature.value += isValidNeighbor & isValidParticle ? neighborDelta : 0;
         }
 
-        double delta = totalTemperature / cellsCount;
-
-        double resultDelta = (delta - temperature.value) * temperature.heatTransfer;
-        resultDelta = resultDelta.quantize(Temperature.threshold);
-
-        if(resultDelta == 0)
+        if(!wasAnyTransfer)
         {
             chunk.state = ChunkState.clean;
             return;
@@ -402,21 +454,40 @@ public class TemperatureSystem : MapEntitySystem!Temperature
         {
             chunk.state = ChunkState.dirty;
 
+            // We return here, but not at start because now program can mark unchanged chunks as clean
+            if(!entity.hasComponent!Particle) return; 
+
             static foreach(bias; EnumMembers!NeighborBiases)
             {
                 neighborPosition[] = selfPosition[] + bias[];
 
-                neighborPosition[0] = neighborPosition[0] - cast(int)(1 * neighborPosition[0] >= mapResolution[0]);
-                neighborPosition[1] = neighborPosition[1] - cast(int)(1 * neighborPosition[1] >= mapResolution[1]);
+                neighborPosition[0] = neighborPosition[0] - cast(int)(neighborPosition[0] >= mapResolution[0]);
+                neighborPosition[1] = neighborPosition[1] - cast(int)(neighborPosition[1] >= mapResolution[1]);
 
                 neighborChunkIndex = Chunk.world2ChunkIndex(neighborPosition);
                 chunks[neighborChunkIndex[1]][neighborChunkIndex[0]].state = ChunkState.dirty;
             }            
         }
-
-        temperature.value += resultDelta;
-
-        temperature.value = temperature.value.clamp(Temperature.min, Temperature.max);
+        
         temperature.value = temperature.value.quantize(Temperature.threshold);
+    }
+}
+
+public class DeltaTemperatureSystem : MapEntitySystem!DeltaTemperature
+{
+    protected override void onAdd(Entity entity)
+    {
+        if(!entity.hasComponent!Particle) return;
+        ref DeltaTemperature delta = entity.getComponent!DeltaTemperature();
+        ref Temperature temperature = entity.getComponent!Temperature();
+
+        temperature.value += delta.delta;
+
+        (cast(TemperatureSystem) TemperatureSystem.instance).markUpdated(entity);
+    }
+
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref DeltaTemperature)
+    {
+        //nothing;
     }
 }
