@@ -286,7 +286,6 @@ public class CombineSystem : MapEntitySystem!Combine
 {
     protected override void updateComponent(Entity self, ref Chunk chunk, ref Combine combine)
     {
-        return;
         import powders.particle.building;
         import powders.particle.register;
         import powders.particle.loading;
