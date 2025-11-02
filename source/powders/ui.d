@@ -52,8 +52,12 @@ public class InitialUISystem : BaseSystem
 public abstract class UIElement
 {
 public:
+
+    bool enabled = true;
+
     ///Position in range [0, 0]..[1, 1], where [0, 0] is top-left corner, [1, 1] is bottom-right corner
     float[2] position = [0, 0];
+
     /// Size in range [0, 0]..[1, 1], where [1, 1] is size of the screen
     float[2] size = [0.1, 0.1];
 
@@ -140,7 +144,8 @@ public class UpdateUISystem : BaseSystem
     {
         foreach (element; allElements)
         {
-            element.render();
+            if(element.enabled)
+                element.render();
         }
     }
 }
