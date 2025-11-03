@@ -16,9 +16,9 @@ public class InitialParticlesSystem : BaseSystem
     public override void onCreated()
     {
         registerDefaultModules();
-        tryLoadTypes();
+        loadParticleCategories();
 
-        if(globalLoadedTypes.length <= 0)
+        if(globalLoadedCategories.length <= 0)
         {
             throw new Exception("There is no types in settings!");
         }

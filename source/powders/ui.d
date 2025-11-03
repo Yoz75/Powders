@@ -129,7 +129,7 @@ public class UIButton : UIElement
     {
         immutable Rectangle rect = Rectangle(absolutePosition[0], absolutePosition[1], 
             absoluteScale[0], absoluteScale[1]);
-
+        
         if(GuiButton(rect, text.ptr))
         {
             foreach (action; onPressed)

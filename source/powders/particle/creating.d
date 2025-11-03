@@ -11,37 +11,110 @@ import powders.particle.loading;
 import powders.particle.building;
 import powders.ui;
 
-mixin TODO!("STILL REMOVE THIS SHIT AND MAKE GENERIC GUI LIKE IN TPT");
+mixin TODO!("OK, NOW THAT'S DYNAMIC UI, BUT NOW WE HAVE TO ADD SCROLLING OF BUTTONS");
+
+private CategoryButton selectedCategoryButton;
+private SerializedParticleType selectedType;
+
+private class CategoryButton
+{
+public:
+    UIButton self;
+    UIButton[] typeButtons;
+
+    this(string name, float[2] position, float[2] size)
+    {
+        self = new UIButton();
+        self.position = position;
+        self.size = size;
+        self.text = name ~ '\0';
+
+        self.onPressed ~= ()
+        {
+            selectedCategoryButton.disable();
+            selectedCategoryButton = this;
+            selectedCategoryButton.enable();
+        };
+    }
+
+    void addTypeButton(string name, float[2] position, float[2] size, SerializedParticleType type)
+    {
+        UIButton typeButton = new UIButton();
+
+        typeButton.text = name;
+        typeButton.position = position;
+        typeButton.size = size;
+        typeButton.onPressed ~= ()
+        {
+            selectedType = type;
+        };
+
+        typeButtons ~= typeButton;
+    }
+
+    void enable()
+    {
+        foreach (typeButton; typeButtons)
+        {
+            typeButton.enabled = true;
+        }
+    }
+
+    void disable()
+    {
+        foreach (typeButton; typeButtons)
+        {
+            typeButton.enabled = false;
+        }
+    }
+}
 
 public class CreateParticleSystem : BaseSystem
 {
+    enum float[2] categoryButtonSize = [0.05, 0.05];
+    enum float[2] categoryButtonsAnchor = [0.93, 0.2];
+    enum float[2] categoryButtonsMargin = [0, 0.075];
+
+    enum float[2] typeButtonSize = categoryButtonSize;
+    enum float[2] typeButtonsAnchor = [0.93, 0.93];
+    enum float[2] typeButtonsMargin = [-0.075, 0];
+
     private size_t selectedTypeIndex;
-    
+
+    private CategoryButton[] categoryButtons;
+
     public override void onCreated()
     {
-        auto nextButton = new UIButton();
-        nextButton.text = "next";
-        nextButton.size = [0.1, 0.1];
-        nextButton.position = [0.89, 0.89];
-        nextButton.onPressed ~= &nextType;
+        assert(globalLoadedCategories.length > 0, "CreateParticleSystem is being initialized, 
+         but loadCategories(0 still wasn't called!)");
 
-        auto prevButton = new UIButton();
-        prevButton.text = "prev";
-        prevButton.size = [0.1, 0.1];
-        prevButton.position = [0.01, 0.89];
-        prevButton.onPressed ~= &prevType;
-    }
+        float[2] categoryButtonPosition = categoryButtonsAnchor;
 
-    private void nextType()
-    {
-        selectedTypeIndex++;
-        selectedTypeIndex %= globalLoadedTypes.length;
-    }
+        foreach(i, category; globalLoadedCategories)
+        {
+            auto categoryButton = new CategoryButton(category.name, categoryButtonPosition, categoryButtonSize);
 
-    private void prevType()
-    {
-        selectedTypeIndex--;
-        selectedTypeIndex %= globalLoadedTypes.length;
+            float[2] typeButtonPosition = typeButtonsAnchor;
+            foreach(type; category.types)
+            {
+                immutable size_t terminatorIndex = indexOfTerminator(type.typeID);
+                immutable size_t lastIndex = terminatorIndex == -1 ? type.typeID.length - 1 : terminatorIndex;
+
+                string name = cast(string) type.typeID[0..lastIndex].dup;
+                categoryButton.addTypeButton(name, typeButtonPosition, typeButtonSize, type);
+
+                typeButtonPosition[] += typeButtonsMargin;
+            }
+
+            categoryButton.disable();
+            categoryButtons ~= categoryButton;
+            categoryButtonPosition[] += categoryButtonsMargin[];
+        }
+
+        selectedCategoryButton = categoryButtons[0];
+        selectedType = globalLoadedCategories[0].types[0];
+
+        selectedCategoryButton.enable;
     }
 
     protected override void update()
@@ -62,7 +135,7 @@ public class CreateParticleSystem : BaseSystem
 
             if(isUnderUI(uintPos.screenPos2RelativeScreenPos)) return;
 
-            buildParticle(globalMap.getAt(pos), globalLoadedTypes[selectedTypeIndex]);
+            buildParticle(globalMap.getAt(pos), selectedType);
         }
         else if(IsMouseButtonDown(1))
         {
@@ -80,4 +153,18 @@ public class CreateParticleSystem : BaseSystem
             destroyParticle(globalMap.getAt(pos));
         }
     }
+}
+
+import powders.particle.basics : ParticleId;
+private size_t indexOfTerminator(ParticleId id)
+{
+    foreach(i, ch; id)
+    {
+        if(ch == char.init)
+        {
+            return i;
+        }
+    }
+
+    return -1;
 }
