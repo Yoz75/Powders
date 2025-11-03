@@ -121,6 +121,8 @@ public:
 public class UIButton : UIElement
 {
     public void delegate()[] onPressed;
+    /// Text of the button. That MUST be a NULL TERMINATED string (ray-gui needs that). 
+    /// I'll don't fix that because it's an asshole pain
     public string text;
 
     protected override void render(uint[2] absolutePosition, uint[2] absoluteScale)
