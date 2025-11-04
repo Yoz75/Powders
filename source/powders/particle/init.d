@@ -25,7 +25,7 @@ public class InitialParticlesSystem : BaseSystem
 
         assert(globalMap != Map.init, "Initial particle system is being initialized, but map is still wasn't inited!");
 
-        SystemFactory!PowderSystem.create();
+        SystemFactory!MovableSystem.create();
         SystemFactory!GravitySystem.create();
         SystemFactory!AdhesionSystem.create();
         SystemFactory!ChangeGravitySystem.create();

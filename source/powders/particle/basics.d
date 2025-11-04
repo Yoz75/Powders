@@ -92,8 +92,8 @@ public:
     static float gravity = 9.81;
 }
 
-/// Component that says that this entity can move (and fall) like sand
-@Component(OnDestroyAction.destroy) public struct Powder
+/// Component that says that this entity can move
+@Component(OnDestroyAction.destroy) public struct Movable
 {
     mixin MakeJsonizable;
 
@@ -137,9 +137,9 @@ public:
     }
 }
 
-public class PowderSystem : MapEntitySystem!Powder
+public class MovableSystem : MapEntitySystem!Movable
 {
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Powder powder)
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Movable movable)
     {
         import std.math : round;
         import std.algorithm : clamp;
@@ -151,13 +151,13 @@ public class PowderSystem : MapEntitySystem!Powder
 
         auto currentPosition = entity.getComponent!Position().xy;
 
-        if (powder.velocity[0] == 0 && powder.velocity[1] == 0)
+        if (movable.velocity[0] == 0 && movable.velocity[1] == 0)
             return;
 
-        powder.velocity[0] = powder.velocity[0].clamp(-Powder.maxVelocity, Powder.maxVelocity);
-        powder.velocity[1] = powder.velocity[1].clamp(-Powder.maxVelocity, Powder.maxVelocity);
+        movable.velocity[0] = movable.velocity[0].clamp(-Movable.maxVelocity, Movable.maxVelocity);
+        movable.velocity[1] = movable.velocity[1].clamp(-Movable.maxVelocity, Movable.maxVelocity);
 
-        int[2] roundedVelocity = [cast(int) powder.velocity[0], cast(int) powder.velocity[1]];
+        int[2] roundedVelocity = [cast(int) movable.velocity[0], cast(int) movable.velocity[1]];
 
         int[2] targetPosition;
         targetPosition[] = currentPosition[] + roundedVelocity[];
@@ -166,7 +166,7 @@ public class PowderSystem : MapEntitySystem!Powder
 
         if(finalPosition == currentPosition)
         {
-            powder.velocity = [0, 0];
+            movable.velocity = [0, 0];
             if(hasAdhesion) adhesion.isActive = true;
             return;
         }
@@ -174,7 +174,7 @@ public class PowderSystem : MapEntitySystem!Powder
         globalMap.swap(entity, globalMap.getAt(finalPosition));
 
         if(finalPosition != targetPosition)
-            powder.velocity = [0, 0];
+            movable.velocity = [0, 0];
     }
 
     private int[2] findFurthestFreeCellOnLine(int[2] start, int[2] end)
@@ -214,10 +214,10 @@ public class GravitySystem : MapEntitySystem!Gravity
 {
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Gravity gravity)
     {
-        if(entity.hasComponent!Powder())
+        if(entity.hasComponent!Movable())
         {
-            ref Powder powder = entity.getComponent!Powder();
-            powder.velocity[] += Gravity.direction[] * gravity.gravity;
+            ref Movable movable = entity.getComponent!Movable();
+            movable.velocity[] += Gravity.direction[] * gravity.gravity;
         }
     }
 }
@@ -254,11 +254,17 @@ public class ChangeGravitySystem : BaseSystem
 
 public class AdhesionSystem : MapEntitySystem!Adhesion
 {
+    protected override void onAdd(Entity entity)
+    {
+        if(!entity.hasComponent!Movable())
+        {
+            throw new Exception("Adhesion component can be only on Movable particles!");
+        }
+    }
+
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Adhesion adhesion)
     {
         import std.random;
-
-        assert(entity.hasComponent!Powder(), "Adhesion component can be only on Powder particles!");
             
         if(!adhesion.isActive) return;
         
@@ -316,7 +322,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
             direction2Biases = direction2LeftRightBiases;
         }
 
-        entity.getComponent!Powder().velocity[] = 
+        entity.getComponent!Movable().velocity[] = 
         direction2Biases[Gravity.direction][uniform(0, 2)][];
     }
 }
