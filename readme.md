@@ -1,5 +1,6 @@
 # Powders
-<img width="812" height="391" alt="изображение" src="https://github.com/user-attachments/assets/ba304324-d4f0-455d-ad4e-df7fd92280b8" />
+<img width="1438" height="740" alt="изображение" src="https://github.com/user-attachments/assets/2d2dd3a3-aa6e-4cde-b1d3-7d9c13365125" />
+
 
 
 Powders is a simple [TPT](https://github.com/The-Powder-Toy/The-Powder-Toy)-like game, but trying to be more physically correct (or not, haha)! The key feature -- you can add your own types without any coding! 
