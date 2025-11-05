@@ -27,6 +27,7 @@ public class InitialParticlesSystem : BaseSystem
 
         SystemFactory!MovableSystem.create();
         SystemFactory!GravitySystem.create();
+        SystemFactory!PowderSystem.create();
         SystemFactory!AdhesionSystem.create();
         SystemFactory!ChangeGravitySystem.create();
         SystemFactory!CreateParticleSystem.create();

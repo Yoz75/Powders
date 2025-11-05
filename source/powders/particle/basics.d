@@ -98,9 +98,16 @@ public:
     mixin MakeJsonizable;
 
 public:
+    bool isFalling;
     static float maxVelocity = 512;
     /// Current velocity of the particle [x, y] in cells per update
     float[2] velocity = [0, 0];
+}
+
+// A component, that indicates that this particle should slip like sand
+@Component(OnDestroyAction.destroy) public struct Powder
+{
+    mixin MakeJsonizable;
 }
 
 /// A component that indicates slip particles
@@ -111,8 +118,6 @@ public:
 public:
     /// The slipperiness of particle in range 0..1
     @JsonizeField float adhesion = 1;
-    /// Can the particle slip, or not?
-    bool isActive;
 }
 
 /// A particle, that can turn into `result` when hits `other`
@@ -144,11 +149,7 @@ public class MovableSystem : MapEntitySystem!Movable
         import std.math : round;
         import std.algorithm : clamp;
 
-        bool hasAdhesion = entity.hasComponent!Adhesion();
-        ref Adhesion adhesion = entity.getComponent!Adhesion();
-
-        if(hasAdhesion) adhesion.isActive = false;
-
+        movable.isFalling = true;
         auto currentPosition = entity.getComponent!Position().xy;
 
         if (movable.velocity[0] == 0 && movable.velocity[1] == 0)
@@ -156,6 +157,10 @@ public class MovableSystem : MapEntitySystem!Movable
 
         movable.velocity[0] = movable.velocity[0].clamp(-Movable.maxVelocity, Movable.maxVelocity);
         movable.velocity[1] = movable.velocity[1].clamp(-Movable.maxVelocity, Movable.maxVelocity);
+
+        (cast(PowderSystem) PowderSystem.instance).markUpdated(entity);
+        (cast(AdhesionSystem) AdhesionSystem.instance).markUpdated(entity);
+        
 
         int[2] roundedVelocity = [cast(int) movable.velocity[0], cast(int) movable.velocity[1]];
 
@@ -167,7 +172,8 @@ public class MovableSystem : MapEntitySystem!Movable
         if(finalPosition == currentPosition)
         {
             movable.velocity = [0, 0];
-            if(hasAdhesion) adhesion.isActive = true;
+            movable.isFalling = false;
+            
             return;
         }
 
@@ -252,25 +258,35 @@ public class ChangeGravitySystem : BaseSystem
     }
 }
 
-public class AdhesionSystem : MapEntitySystem!Adhesion
+public class PowderSystem : MapEntitySystem!Powder
 {
-    protected override void onAdd(Entity entity)
+    import std.random;
+
+    private void markUpdated(Entity entity)
     {
-        if(!entity.hasComponent!Movable())
-        {
-            throw new Exception("Adhesion component can be only on Movable particles!");
-        }
+        immutable int[2] position = entity.getComponent!Position().xy;
+        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
+
+        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
     }
 
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Adhesion adhesion)
+    protected override void onAdd(Entity entity)
     {
-        import std.random;
-            
-        if(!adhesion.isActive) return;
-        
-        auto position = entity.getComponent!Position();
+        markUpdated(entity);
+    }
 
-        int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Powder powder)
+    {
+        /*ТУДУ: починить чанки (обновляются только если частица создана в чанке, а если упала туда -- нет)
+        тут и ещё в адгезии*/
+        chunk.state = ChunkState.clean;
+        if(!entity.hasComponent!Movable())
+        {
+            throw new Exception("Powder component can be only on Movable particles!");
+        }
+
+        immutable auto position = entity.getComponent!Position();
+        immutable int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
 
         // at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
         if(!globalMap.getAt(belowPosition).hasComponent!Particle)
@@ -278,23 +294,17 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
             return;
         }
 
+        if(entity.getComponent!Movable().isFalling) return;
+
+        chunk.state = ChunkState.dirty;
+
         /*
                -1 0 1
             -1 [][][]
              0 []xx[]
              1 [][][]
         */
-        // should be int[2][2], but float[2][2] because of boilerplate
-        enum float[2][2][GravityDirection] direction2LeftRightBiases = 
-        [
-            GravityDirection.none: [[0, 0], [0, 0]],
-            GravityDirection.down: [[-1, 0], [1, 0]],
-            GravityDirection.left: [[0, -1], [0, 1]],
-            GravityDirection.right: [[-1, 0], [1, 0]],
-            GravityDirection.up: [[-1, 0], [1, 0]]
-        ];
-
-        enum float[2][2][GravityDirection] direction2DiagonalBiases = 
+        enum float[2][2][GravityDirection] biases = 
         [
             GravityDirection.none: [[0, 0], [0, 0]],
             GravityDirection.down: [[1, 1], [-1, 1]],
@@ -303,27 +313,77 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
             GravityDirection.up: [[-1, -1], [1, -1]]
         ];
 
-        float[2][2][GravityDirection] direction2Biases;
+        entity.getComponent!Movable.velocity = biases[Gravity.direction][uniform(0, 2)];
+    }
+}
 
-        if(adhesion.adhesion == 0)
+public class AdhesionSystem : MapEntitySystem!Adhesion
+{
+    import std.random;
+
+    private void markUpdated(Entity entity)
+    {
+        immutable int[2] position = entity.getComponent!Position().xy;
+        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
+
+        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
+    }
+
+
+    protected override void onAdd(Entity entity)
+    {
+        markUpdated(entity);
+    }
+
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Adhesion adhesion)
+    {
+        chunk.state = ChunkState.clean;
+        if(!entity.hasComponent!Movable())
         {
-            direction2Biases = direction2LeftRightBiases;
+            throw new Exception("Adhesion component can be only on Movable particles!");
         }
-        else if(adhesion.adhesion == 1)
+            
+        immutable auto position = entity.getComponent!Position();
+        immutable int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
+
+        // at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
+        if(!globalMap.getAt(belowPosition).hasComponent!Particle)
         {
-            direction2Biases = direction2DiagonalBiases;    
+            return;
         }
-        else if(uniform01() < adhesion.adhesion)
+
+        if(entity.getComponent!Movable().isFalling) return;        
+
+        chunk.state = ChunkState.dirty;
+        /*
+               -1 0 1
+            -1 [][][]
+             0 []xx[]
+             1 [][][]
+        */
+        // should be int[2][2], but float[2][2] because of boilerplate
+        enum float[2][2][GravityDirection] direction2Biases = 
+        [
+            GravityDirection.none: [[0, 0], [0, 0]],
+            GravityDirection.down: [[-1, 0], [1, 0]],
+            GravityDirection.left: [[0, -1], [0, 1]],
+            GravityDirection.right: [[-1, 0], [1, 0]],
+            GravityDirection.up: [[-1, 0], [1, 0]]
+        ];
+
+
+        float[2][2] resultBiases;
+
+        if(uniform01() >= adhesion.adhesion)
         {
-            direction2Biases = direction2DiagonalBiases;    
+            resultBiases = direction2Biases[Gravity.direction];
         }
         else
         {
-            direction2Biases = direction2LeftRightBiases;
+            resultBiases = [0, 0];
         }
 
-        entity.getComponent!Movable().velocity[] = 
-        direction2Biases[Gravity.direction][uniform(0, 2)][];
+        entity.getComponent!Movable().velocity = resultBiases[uniform(0, 2)];
     }
 }
 
