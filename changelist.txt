@@ -8,3 +8,20 @@
 * Added temperature and temperature system. Added heat transfer
 * Added reserve function to kernel.ecs
 * Added render modes
+
+0.3.0:
+* Fixed readme.md (I've forgotten to add render modes to controls section)
+* Replaced dlang array with native array in powders.map
+* Removed __gshared in powders.register
+* Made map.d more readable
+* Removed optional in ComponentPool.getComponent method
+* Added chunks and their support to temperature system
+* Added Temperature.heat and Temperature.heatCapacity
+* Added DeltaTemperautre component
+* Now Cool and Heat tools use DeltaTemperature instead of Temperature
+* Added transfer coefficient and thermal conductivity
+* Added dynamic UI!!!!!!!!!!
+* Separated all types to categories!
+* Separated Powder and Adhesion (new powder, not powder that became movable)
+* Added copper 
+* And last one -- updated this list \(0o0)/!!!
