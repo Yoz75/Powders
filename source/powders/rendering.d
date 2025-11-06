@@ -259,11 +259,11 @@ public int[2] mouse2TexturePosition(ref in Sprite sprite)
 } 
 
 /// Get pixel position on texture, pointed by mouse, but with world coordinates
-public int[2] mouseWorld2TexturePosition(ref in Sprite sprite)
+public int[2]   mouseWorld2TexturePosition(ref in Sprite sprite)
 {
     import raylib;
     import powders.input;
-    import std.math : cos, sin;
+    import std.math;
 
     immutable float[2] position = Input.getMouseWorldPosition();
 
@@ -285,7 +285,7 @@ public int[2] mouseWorld2TexturePosition(ref in Sprite sprite)
 
     if (tx < 0 || ty < 0 || tx >= sprite.texture.width || ty >= sprite.texture.height)
         return [-1, -1];
-    return [cast(int)tx, cast(int)ty];
+    return [cast(int) tx.round(), cast(int) ty.round()];
 } 
 
 /// Render modes
