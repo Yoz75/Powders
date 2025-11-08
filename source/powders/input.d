@@ -8,6 +8,7 @@ public enum Keys
 {
     none = 0,
     apostrophe = 39,
+    space = 32,
     comma = 44,
     minus,
     period,
@@ -65,11 +66,18 @@ public struct Input // I could use here global functions, but their names differ
     import raylib;
 public:
 static:
-    /// Was key pressed this frame?
-    /// Returns: true if was, false if not
+    /// Is key down?
+    /// Returns: true if key is down, false if not
     bool isKeyDown(Keys key)
     {
         return raylib.IsKeyDown(key);
+    }
+
+    /// Was key prassed this frame?
+    /// Returns: true if key was pressed this frame, false otherwise
+    bool isKeyPressed(Keys key)
+    {
+        return raylib.IsKeyPressed(key);
     }
 
     /// Get position of mouse

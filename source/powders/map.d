@@ -2,6 +2,7 @@ module powders.map;
 
 import kernel.ecs;
 import kernel.simulation;
+import powders.timecontrol;
 
 /// Global map instance. 
 public Map globalMap;
@@ -74,6 +75,11 @@ public abstract class MapEntitySystem(T) : System!T
 
     public override void update()
     {
+        if(globalGameState == GameState.pause)
+        {
+            return;
+        }
+        
         foreach(j, row; chunks)
         {
             foreach(i, ref chunk; row)

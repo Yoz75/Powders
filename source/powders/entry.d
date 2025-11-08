@@ -9,6 +9,7 @@ import powders.particle.init;
 import powders.rendering;
 import powders.input;
 import powders.ui;
+import powders.timecontrol;
 
 private class CreateMapSystem : BaseSystem
 {
@@ -50,7 +51,7 @@ public void powdersMain()
     SetTargetFPS(240);
 
     Simulation.run!(CreateMapSystem, InitialRenderSystem, InitialInputSystem,
-     InitialParticlesSystem, InitialUISystem, ExitSystem)
+     InitialParticlesSystem, InitialUISystem, ExitSystem, TimeControlSystem)
     (gameWorld, toDelegate(&beforeUpdate), toDelegate(&afterUpdate));
 
     import core.stdc.stdlib : exit;
