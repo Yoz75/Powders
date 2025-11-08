@@ -120,23 +120,52 @@ private final class MapRenderSystem : BaseSystem
     }
 }
 
-private final class RenderableSystem : MapEntitySystem!MapRenderable
+public final class RenderableSystem : MapEntitySystem!MapRenderable
 {
     import raylib;
+
+    /// A buffer, that contains prefious frame. It's needed to optimize updating.
+    private kc.Color[][] lastFrameBuffer;
+    /// Previous state of render mode. Needed to fix render modes after last optimization, bruh
+    private RenderMode lastRenderMode;
 
     public override void onCreated()
     {
         isPausable = false;
+
+        immutable int[2] resolution = globalMap.resolution;
+
+        lastFrameBuffer = new kc.Color[][](resolution[0], resolution[1]);
+    }
+
+    protected override void onAdd(Entity entity)
+    {
+        markDirty(entity);
     }
 
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref MapRenderable renderable)
     {
-        bool hasPosition = entity.hasComponent!Position();
-        assert(hasPosition, "DEBUG: AT SOME REASON NOT EVERY ENTITY HAS A POSITION!!11!!1111111!!!!
-         KERNEL PANIC!11 SEGMENTATION FAULT (CORE ISN'T DAMPED)");
+        debug
+        {
+            bool hasPosition = entity.hasComponent!Position();
+            assert(hasPosition, "DEBUG: AT SOME REASON NOT EVERY ENTITY HAS A POSITION!!11!!1111111!!!!
+            KERNEL PANIC!11 SEGMENTATION FAULT (CORE ISN'T DAMPED)");
+        }
 
+        immutable auto position = entity.getComponent!Position();
+
+        if(lastFrameBuffer[position.xy[0]][position.xy[1]] == renderable.color 
+         && lastRenderMode == globalRenderer.currentRenderMode)
+        {
+            chunk.state = ChunkState.clean;
+            return;
+        }
+
+        chunk.state = ChunkState.dirty;
+        lastRenderMode = globalRenderer.currentRenderMode;
+
+        lastFrameBuffer[position.xy[0]][position.xy[1]] = renderable.color;
         kc.Color color;
-
         if(globalRenderer.currentRenderMode == RenderMode.temperature)
         {
             import kernel.math;
@@ -172,7 +201,6 @@ private final class RenderableSystem : MapEntitySystem!MapRenderable
             color = renderable.color;          
         }
         
-        auto position = entity.getComponent!Position();
         MapRenderSystem.instance.mapSprite.setPixel(position.xy, color); 
     }
 }

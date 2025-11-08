@@ -144,6 +144,9 @@ public:
 
 public class MovableSystem : MapEntitySystem!Movable
 {
+    /// Calls when `self` moved and swapped with `other`
+    public void delegate(Entity self, Entity other)[] onMoved;
+
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Movable movable)
     {
         import std.math : round;
@@ -177,7 +180,14 @@ public class MovableSystem : MapEntitySystem!Movable
             return;
         }
 
-        globalMap.swap(entity, globalMap.getAt(finalPosition));
+        immutable Entity other = globalMap.getAt(finalPosition);
+
+        globalMap.swap(entity, other);
+
+        foreach(action; onMoved)
+        {
+            action(entity, other);
+        }
 
         if(finalPosition != targetPosition)
             movable.velocity = [0, 0];

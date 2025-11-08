@@ -9,6 +9,7 @@ import powders.particle.basics;
 import powders.particle.register;
 import powders.particle.loading;
 import powders.particle.creating;
+import powders.rendering;
 
 /// System, that starts other systems in powders.particle module
 public class InitialParticlesSystem : BaseSystem
@@ -49,5 +50,11 @@ public class InitialParticlesSystem : BaseSystem
         {
             entity.addComponent!Temperature(Temperature.init);
         }
+
+        (cast(MovableSystem) MovableSystem.instance).onMoved ~= (Entity self, Entity other) 
+        {
+            (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
+            (cast(RenderableSystem) RenderableSystem.instance).markDirty(other);
+        };
     }
 }
