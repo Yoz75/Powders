@@ -102,6 +102,18 @@ public abstract class MapEntitySystem(T) : System!T
         } 
     }
 
+    /// Mark the chunk of `entity` as dirty
+    /// Params:
+    ///   entity = the entity, made chunk dirty
+    public void markDirty(Entity entity)
+    {
+        immutable int[2] position = entity.getComponent!Position().xy;
+        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
+
+        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
+    }
+
+
     protected abstract void updateComponent(Entity entity, ref Chunk chunk, ref T component);
 
     private void swapChunks()

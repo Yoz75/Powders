@@ -432,13 +432,6 @@ public class TemperatureSystem : MapEntitySystem!Temperature
     private int[2] mapResolution;
 
     /// Mark that entity was updated and it's chunk must be recomputed
-    private void markUpdated(Entity entity)
-    {
-        immutable int[2] position = entity.getComponent!Position().xy;
-        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
-
-        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
-    }
 
     public override void onCreated()
     {
@@ -457,7 +450,7 @@ public class TemperatureSystem : MapEntitySystem!Temperature
 
     protected override void onAdd(Entity entity)
     {
-        markUpdated(entity);
+        markDirty(entity);
     }
 
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Temperature temperature)
@@ -549,7 +542,7 @@ public class DeltaTemperatureSystem : MapEntitySystem!DeltaTemperature
 
         temperature.value += delta.delta;
 
-        (cast(TemperatureSystem) TemperatureSystem.instance).markUpdated(entity);
+        (cast(TemperatureSystem) TemperatureSystem.instance).markDirty(entity);
     }
 
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref DeltaTemperature)
