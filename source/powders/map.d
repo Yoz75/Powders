@@ -22,6 +22,7 @@ public abstract class MapEntitySystem(T) : System!T
         dirty,
         clean
     }
+
     public struct Chunk
     {
     public:
@@ -51,6 +52,7 @@ public abstract class MapEntitySystem(T) : System!T
 
     protected Chunk[][] chunks;
     private Chunk[][] tempChunks;
+    protected bool isPausable = true;
 
     public this()
     {
@@ -75,11 +77,11 @@ public abstract class MapEntitySystem(T) : System!T
 
     public override void update()
     {
-        if(globalGameState == GameState.pause)
+        if(globalGameState == GameState.pause && isPausable)
         {
             return;
         }
-        
+
         foreach(j, row; chunks)
         {
             foreach(i, ref chunk; row)

@@ -124,6 +124,11 @@ private final class RenderableSystem : MapEntitySystem!MapRenderable
 {
     import raylib;
 
+    public override void onCreated()
+    {
+        isPausable = false;
+    }
+
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref MapRenderable renderable)
     {
         bool hasPosition = entity.hasComponent!Position();
