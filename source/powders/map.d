@@ -142,7 +142,7 @@ public struct Map
     private Entity[][] tempMap; 
 
     /// The resolution of map, [x, y]
-    public @property int[2] resolution()
+    public @property int[2] resolution() pure const
     {
         int[2] resolution;
         resolution = [cast(int) map.length, cast(int) map[0].length];
