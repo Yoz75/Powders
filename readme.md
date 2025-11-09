@@ -3,7 +3,7 @@
 
 
 
-Powders is a simple [TPT](https://github.com/The-Powder-Toy/The-Powder-Toy)-like game, but trying to be more physically correct (or not, haha)! The key feature -- you can add your own types without any coding! 
+Powders is a simple [TPT](https://github.com/The-Powder-Toy/The-Powder-Toy)-like game. The key feature -- you can add your own types without any coding! 
 This game uses Entity-Component-System, you have to modify game's code to add new components, but you can just add a directory and some .json files to build your own particle type from already 
 existing components!
 
