@@ -56,5 +56,11 @@ public class InitialParticlesSystem : BaseSystem
             (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
             (cast(RenderableSystem) RenderableSystem.instance).markDirty(other);
         };
+
+        (cast(TemperatureSystem) TemperatureSystem.instance).onTemperatureChanged ~= (Entity self) 
+        {
+            if(globalRenderer.currentRenderMode == RenderMode.temperature)
+                (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
+        };
     }
 }

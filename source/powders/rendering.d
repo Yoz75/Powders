@@ -120,12 +120,46 @@ private final class MapRenderSystem : BaseSystem
     }
 }
 
+private static kc.Color temperature2Color(inout double temperature) pure
+{
+    import kernel.math;
+    import powders.particle.basics : Temperature;
+
+    /// Maximal temperature, that rendered as a red color. Temperatures above this value are rendered as hot.
+    enum maxWarmTemperature = 1000.0;
+    enum maxHotTemperature = Temperature.max;
+
+    kc.Color color;
+
+    immutable ubyte normalizedWarm = 
+    cast(ubyte) remap(temperature, 0, maxWarmTemperature, 0, 255);
+
+    immutable ubyte normalizedHot = 
+    cast(ubyte) remap(temperature, maxWarmTemperature, maxHotTemperature, 200, 255);
+
+    immutable ubyte normalizedCold = 
+    cast(ubyte) remap(temperature, 0, Temperature.min, 0, 255);
+
+    ubyte warmColor = normalizedWarm * cast(ubyte) (temperature > 0 && temperature <= maxWarmTemperature);
+    ubyte hotColor = normalizedHot * cast(ubyte) (temperature > maxWarmTemperature);
+    ubyte coldColor = normalizedCold * cast(ubyte) (temperature < 0);
+
+    // If temperature > 0 -- warm colors (or hot if temperature is too big), if 0 -- black, else -- cold colors
+    color.r = cast(ubyte) (warmColor + hotColor);
+    color.g = hotColor;
+    color.b = cast(ubyte) (coldColor + hotColor);
+    color.a = 255;
+    return color;
+}
+
 public final class RenderableSystem : MapEntitySystem!MapRenderable
 {
+    import powders.particle.basics : Temperature;
     import raylib;
 
     /// A buffer, that contains prefious frame. It's needed to optimize updating.
     private kc.Color[][] lastFrameBuffer;
+
     /// Previous state of render mode. Needed to fix render modes after last optimization, bruh
     private RenderMode lastRenderMode;
 
@@ -143,6 +177,47 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
         markDirty(entity);
     }
 
+    protected override void update()
+    {
+        if(lastRenderMode != globalRenderer.currentRenderMode)
+        {
+            foreach(row; chunks)
+            {
+                foreach(ref chunk_; row)
+                {
+                    chunk_.state = ChunkState.dirty;
+                }
+            }
+            final switch(globalRenderer.currentRenderMode)
+            {
+                case RenderMode.color: 
+
+                    foreach(x, y, entity_; globalMap)
+                    {
+                        immutable auto color = entity_.getComponent!MapRenderable.color;
+                        lastFrameBuffer[y][x] = color;
+                        MapRenderSystem.instance.mapSprite.setPixel([x, y], color); 
+                    }
+                    
+                    break;
+                case RenderMode.temperature:
+
+                    foreach(x, y, entity_; globalMap)
+                    {
+                        immutable auto color = entity_.getComponent!Temperature().value.temperature2Color();
+                        lastFrameBuffer[y][x] = color;
+                        MapRenderSystem.instance.mapSprite.setPixel([x, y], color); 
+                    }
+
+                    break;
+            }
+
+            lastRenderMode = globalRenderer.currentRenderMode;
+        }
+
+        super.update();
+    }
+
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref MapRenderable renderable)
     {
         debug
@@ -152,9 +227,15 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
             KERNEL PANIC!11 SEGMENTATION FAULT (CORE ISN'T DAMPED)");
         }
 
+        immutable kc.Color[RenderMode.max + 1] renderMode2Color = 
+        [
+            RenderMode.color: renderable.color,
+            RenderMode.temperature: entity.getComponent!Temperature.value.temperature2Color()
+        ];
+
         immutable auto position = entity.getComponent!Position();
 
-        if(lastFrameBuffer[position.xy[0]][position.xy[1]] == renderable.color 
+        if(lastFrameBuffer[position.xy[1]][position.xy[0]] == renderMode2Color[globalRenderer.currentRenderMode] 
          && lastRenderMode == globalRenderer.currentRenderMode)
         {
             chunk.state = ChunkState.clean;
@@ -164,37 +245,12 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
         chunk.state = ChunkState.dirty;
         lastRenderMode = globalRenderer.currentRenderMode;
 
-        lastFrameBuffer[position.xy[0]][position.xy[1]] = renderable.color;
+        lastFrameBuffer[position.xy[1]][position.xy[0]] = renderMode2Color[globalRenderer.currentRenderMode];
         kc.Color color;
         if(globalRenderer.currentRenderMode == RenderMode.temperature)
         {
-            import kernel.math;
             import powders.particle.basics : Temperature;
-
-            /// Maximal temperature, that rendered as a red color. Temperatures above this value are rendered as hot.
-            enum maxWarmTemperature = 1000.0;
-            enum maxHotTemperature = Temperature.max;
-
-            immutable double temperature = entity.getComponent!Temperature().value;
-
-            immutable ubyte normalizedWarm = 
-            cast(ubyte) remap(temperature, 0, maxWarmTemperature, 0, 255);
-
-            immutable ubyte normalizedHot = 
-            cast(ubyte) remap(temperature, maxWarmTemperature, maxHotTemperature, 200, 255);
-
-            immutable ubyte normalizedCold = 
-            cast(ubyte) remap(temperature, 0, Temperature.min, 0, 255);
-
-            ubyte warmColor = normalizedWarm * cast(ubyte) (temperature > 0 && temperature <= maxWarmTemperature);
-            ubyte hotColor = normalizedHot * cast(ubyte) (temperature > maxWarmTemperature);
-            ubyte coldColor = normalizedCold * cast(ubyte) (temperature < 0);
-
-            // If temperature > 0 -- warm colors (or hot if temperature is too big), if 0 -- black, else -- cold colors
-            color.r = cast(ubyte) (warmColor + hotColor);
-            color.g = hotColor;
-            color.b = cast(ubyte) (coldColor + hotColor);
-            color.a = 255;
+            color = entity.getComponent!Temperature().value.temperature2Color();
         }
         else
         {  

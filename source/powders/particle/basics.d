@@ -435,6 +435,8 @@ import kernel.todo;
 mixin TODO!("Currently TemperatureSystem is broken when process ambient heat, fix later!");
 public class TemperatureSystem : MapEntitySystem!Temperature
 {
+    public void delegate(Entity entity)[] onTemperatureChanged;
+
     /// Cache for temperature components because getComponent is slow
     private Temperature*[] temperatureCache;
     private Position*[] positionCache;
@@ -510,6 +512,9 @@ public class TemperatureSystem : MapEntitySystem!Temperature
             selfDelta = (resultTemperature - temperature.value) * temperature.transferCoefficient;
             neighborDelta = (resultTemperature - neighborTemperature.value) * neighborTemperature.transferCoefficient;
 
+            selfDelta = selfDelta.quantize(Temperature.threshold);
+            neighborDelta = neighborDelta.quantize(Temperature.threshold);
+
             temperature.value += isValidNeighbor & isValidParticle ? selfDelta : 0;
             neighborTemperature.value += isValidNeighbor & isValidParticle ? neighborDelta : 0;
         }
@@ -520,7 +525,7 @@ public class TemperatureSystem : MapEntitySystem!Temperature
             return;
         }
         else
-        {
+        {            
             chunk.state = ChunkState.dirty;
 
             // We return here, but not at start because now program can mark unchanged chunks as clean
@@ -536,9 +541,15 @@ public class TemperatureSystem : MapEntitySystem!Temperature
                 neighborChunkIndex = Chunk.world2ChunkIndex(neighborPosition);
                 chunks[neighborChunkIndex[1]][neighborChunkIndex[0]].state = ChunkState.dirty;
             }            
+
+            foreach(action; onTemperatureChanged)
+            {
+                action(entity);
+            }
         }
         
         temperature.value = temperature.value.quantize(Temperature.threshold);
+        temperature.value = temperature.value.clamp(Temperature.min, Temperature.max);
     }
 }
 
