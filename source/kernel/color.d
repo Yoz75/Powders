@@ -17,7 +17,7 @@ public:
     @JsonizeField ubyte r;
     @JsonizeField ubyte g;
     @JsonizeField ubyte b;
-    @JsonizeField ubyte a = 255;    
+    @JsonizeField ubyte a;    
 
     this(ubyte r, ubyte g, ubyte b, ubyte a = 255)
     {
