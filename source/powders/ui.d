@@ -71,13 +71,13 @@ public:
     {
         import kernel.math;
 
-        immutable uint[2] resolution = globalRenderer.getResolution();
+        immutable int[2] resolution = Renderer.instance.getWindowResolution();
 
-        uint[2] absolutePosition;
+        int[2] absolutePosition;
         absolutePosition[0] = cast(uint) remap!float(position[0], 0, 1, 0, resolution[0]);
         absolutePosition[1] = cast(uint) remap!float(position[1], 0, 1, 0, resolution[1]);
 
-        uint[2] absoluteSize;
+        int[2] absoluteSize;
         absoluteSize[0] = cast(uint) remap!float(size[0], 0, 1, 0, resolution[0]);
         absoluteSize[1] = cast(uint) remap!float(size[1], 0, 1, 0, resolution[1]);
 
@@ -115,7 +115,7 @@ public:
        }
     }
 
-    protected abstract void render(uint[2] absolutePosition, uint[2] absoluteSize);
+    protected abstract void render(int[2] absolutePosition, int[2] absoluteSize);
 }
 
 public class UIButton : UIElement
@@ -125,7 +125,7 @@ public class UIButton : UIElement
     /// I'll don't fix that because it's an asshole pain
     public string text;
 
-    protected override void render(uint[2] absolutePosition, uint[2] absoluteScale)
+    protected override void render(int[2] absolutePosition, int[2] absoluteScale)
     {
         immutable Rectangle rect = Rectangle(absolutePosition[0], absolutePosition[1], 
             absoluteScale[0], absoluteScale[1]);

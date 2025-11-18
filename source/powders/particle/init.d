@@ -2,7 +2,7 @@
 module powders.particle.init;
 
 import kernel.ecs;
-import kernel.color;
+import davincilib.color;
 import powders.map;
 import powders.rendering;
 import powders.particle.basics;
@@ -59,7 +59,7 @@ public class InitialParticlesSystem : BaseSystem
 
         (cast(TemperatureSystem) TemperatureSystem.instance).onTemperatureChanged ~= (Entity self) 
         {
-            if(globalRenderer.currentRenderMode == RenderMode.temperature)
+            if(currentRenderMode == RenderMode.temperature)
                 (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
         };
     }

@@ -1,6 +1,7 @@
-module kernel.color;
+module davincilib.color;
 
-import kernel.jsonutil;
+// Import jsonizer, but not kernel.jsonutil because I don't want the library to depend on the kernel
+import jsonizer;
 
 /// 0xFFFFFF color
 enum Color white = Color(255, 255, 255);
@@ -12,12 +13,12 @@ enum Color blue = Color(0, 0, 255);
 /// RGBA color. This struct is serializable
 public struct Color
 {
-    mixin MakeJsonizable;
+    mixin JsonizeMe;
 public:
-    @JsonizeField ubyte r;
-    @JsonizeField ubyte g;
-    @JsonizeField ubyte b;
-    @JsonizeField ubyte a;    
+    @jsonize ubyte r;
+    @jsonize ubyte g;
+    @jsonize ubyte b;
+    @jsonize ubyte a;    
 
     this(ubyte r, ubyte g, ubyte b, ubyte a = 255)
     {

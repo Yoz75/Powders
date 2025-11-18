@@ -93,8 +93,8 @@ static:
     /// Returns: position of mouse as float[2]
     float[2] getMouseWorldPosition()
     {
-        import powders.rendering : globalCamera;
-        auto rawPosition = GetScreenToWorld2D(GetMousePosition(), globalCamera);
+        import powders.rendering;
+        auto rawPosition = GetScreenToWorld2D(GetMousePosition(), Renderer.instance.camera);
 
         return [rawPosition.x, rawPosition.y];
     }
@@ -136,20 +136,24 @@ private class MovementSystem : BaseSystem
     protected override void update()
     {
         import raylib;
-        import powders.rendering : globalCamera;
+        import powders.rendering;
 
         enum float totalZoomMultiplier = 0.075;
         enum float addZoom = 0.05;
         enum float minimalZoom = 0.1;
         
+        ref Camera2D camera = Renderer.instance.camera;
+
         float wheel = GetMouseWheelMove();
         if (wheel != 0)
-        {
+        {            
+
             // We use raylib function GetMousePosition and now our wrap because we need raylib.Vector2
             // Converting Vector2 to float[2] and then back to Vector2 would be dumb
-            Vector2 mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), globalCamera);
-            globalCamera.offset = GetMousePosition();
-            globalCamera.target = mouseWorldPos;
+            Vector2 mouseWorldPos = GetScreenToWorld2D(GetMousePosition(), camera);
+
+            camera.offset = GetMousePosition();
+            camera.target = mouseWorldPos;
             
             float zoom = wheel * totalZoomMultiplier * settings.zoomSensetivity;
 
@@ -159,7 +163,7 @@ private class MovementSystem : BaseSystem
         if(requestedZoom > 0)
         {
             requestedZoom -= addZoom * settings.zoomSensetivity;
-            globalCamera.zoom += addZoom * settings.zoomSensetivity;
+            camera.zoom += addZoom * settings.zoomSensetivity;
 
             if(requestedZoom - addZoom < 0) requestedZoom = 0;
         }
@@ -167,17 +171,17 @@ private class MovementSystem : BaseSystem
         else if(requestedZoom < 0)
         {
             requestedZoom += addZoom * settings.zoomSensetivity;
-            globalCamera.zoom -= addZoom * settings.zoomSensetivity;
+            camera.zoom -= addZoom * settings.zoomSensetivity;
 
             if(requestedZoom + addZoom > 0) requestedZoom = 0;
         }
 
-        if (globalCamera.zoom < minimalZoom) globalCamera.zoom = minimalZoom;
+        if (camera.zoom < minimalZoom) camera.zoom = minimalZoom;
 
-        immutable float moveSpeed = 100.0f * GetFrameTime() / globalCamera.zoom;
-        if (Input.isKeyDown(Keys.w)) globalCamera.target.y -= moveSpeed;
-        if (Input.isKeyDown(Keys.s)) globalCamera.target.y += moveSpeed;
-        if (Input.isKeyDown(Keys.a)) globalCamera.target.x -= moveSpeed;
-        if (Input.isKeyDown(Keys.d)) globalCamera.target.x += moveSpeed;
+        immutable float moveSpeed = 100.0f * GetFrameTime() / camera.zoom;
+        if (Input.isKeyDown(Keys.w)) camera.target.y -= moveSpeed;
+        if (Input.isKeyDown(Keys.s)) camera.target.y += moveSpeed;
+        if (Input.isKeyDown(Keys.a)) camera.target.x -= moveSpeed;
+        if (Input.isKeyDown(Keys.d)) camera.target.x += moveSpeed;
     }
 }

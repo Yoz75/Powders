@@ -129,11 +129,11 @@ public class CreateParticleSystem : BaseSystem
             if(pos[0] < 0 || pos[1] < 0) return; // So shit, but works
 
             float[2] mousePos = Input.getMousePosition();
-            uint[2] uintPos;
-            uintPos[0] = cast(uint) mousePos[0];
-            uintPos[1]= cast(uint) mousePos[1];
+            int[2] intPos;
+            intPos[0] = cast(int) mousePos[0];
+            intPos[1]= cast(int) mousePos[1];
 
-            if(isUnderUI(uintPos.screenPos2RelativeScreenPos)) return;
+            if(isUnderUI(intPos.screenPos2RelativeScreenPos)) return;
 
             buildParticle(globalMap.getAt(pos), selectedType);
         }
@@ -144,11 +144,11 @@ public class CreateParticleSystem : BaseSystem
             if(pos[0] < 0 || pos[1] < 0) return; // ditto
 
             float[2] mousePos = Input.getMousePosition();
-            uint[2] uintPos;
-            uintPos[0] = cast(uint) mousePos[0];
-            uintPos[1]= cast(uint) mousePos[1];
+            int[2] intPos;
+            intPos[0] = cast(int) mousePos[0];
+            intPos[1]= cast(int) mousePos[1];
 
-            if(isUnderUI(uintPos.screenPos2RelativeScreenPos)) return;
+            if(isUnderUI(intPos.screenPos2RelativeScreenPos)) return;
 
             destroyParticle(globalMap.getAt(pos));
         }

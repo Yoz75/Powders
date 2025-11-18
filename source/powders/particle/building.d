@@ -4,7 +4,7 @@ module powders.particle.building;
 import kernel.todo;
 import kernel.ecs;
 import powders.map : Position;
-import powders.rendering : MapRenderable, black;
+import powders.rendering;
 import powders.particle.basics;
 import powders.particle.register;
 import powders.particle.loading;

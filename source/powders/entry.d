@@ -2,7 +2,6 @@ module powders.entry;
 
 import kernel.ecs;
 import kernel.simulation;
-import kernel.color;
 import kernel.versions;
 import powders.map;
 import powders.particle.init;

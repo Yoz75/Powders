@@ -1,18 +1,14 @@
 module powders.rendering;
 
-public import kernel.color;
+public import davincilib;
 import kernel.ecs;
-import kc = kernel.color;
+import kc = davincilib.color;
 import kernel.jsonutil;
 import powders.map;
 import powders.particle.register;
 import raylib;
 
-/// Global camera instance
-Camera2D globalCamera = Camera2D(Vector2(0, 0), Vector2(0, 0), 0, 1);
-
-/// Global renderer instance
-Renderer globalRenderer;
+RenderMode currentRenderMode = RenderMode.color;
 
 /// A thing, renderable on map
 @Component(OnDestroyAction.setInit) public struct MapRenderable
@@ -28,6 +24,10 @@ public final class InitialRenderSystem : BaseSystem
 {
     public override void onCreated()
     {
+        // Ugly, but simple. 
+        // Renderer is a singletone, so this instance will be assigned to Renderer.instance 
+        new Renderer();
+
         SystemFactory!InitRendererSystem.create();
         SystemFactory!MapRenderSystem.create();
         SystemFactory!RenderableSystem.create();
@@ -39,13 +39,13 @@ private final class InitRendererSystem : BaseSystem
 {
     protected override void beforeUpdate()
     {
-        globalRenderer.startFrame();
-        globalRenderer.clearScreen();
+        Renderer.instance.startFrame();
+        Renderer.instance.clearScreen();
     }
 
     protected override void afterUpdate()
     {
-        globalRenderer.endFrame();
+        Renderer.instance.endFrame();
     }
 }
 
@@ -63,11 +63,11 @@ public int[2] mouse2MapSpritePosition()
 /// Params:
 ///   screenPosition = raw screen position
 /// Returns: 
-public float[2] screenPos2RelativeScreenPos(uint[2] screenPosition)
+public float[2] screenPos2RelativeScreenPos(int[2] screenPosition)
 {
     import kernel.math;
 
-    immutable uint[2] resolution = globalRenderer.getResolution();
+    immutable int[2] resolution = Renderer.instance.getWindowResolution();
     float[2] position;
 
     position[0] = remap!float(screenPosition[0], 0, resolution[0], 0, 1);
@@ -76,16 +76,16 @@ public float[2] screenPos2RelativeScreenPos(uint[2] screenPosition)
     return position;
 }
 
-public uint[2] relativeScreenPos2ScreenPos(float[2] relativePosition)
+public int[2] relativeScreenPos2ScreenPos(float[2] relativePosition)
 {
     import kernel.math;
 
-    immutable uint[2] resolution = globalRenderer.getResolution();
+    immutable int[2] resolution = Renderer.instance.getWindowResolution();
 
-    uint[2] absolutePosition = [0, 0];
+    int[2] absolutePosition = [0, 0];
 
-    absolutePosition[0] =cast(uint) remap!float(relativePosition[0], 0, 1, 0, resolution[0]);
-    absolutePosition[1] = cast(uint) remap!float(relativePosition[1], 0, 1, 0, resolution[1]);
+    absolutePosition[0] =cast(int) remap!float(relativePosition[0], 0, 1, 0, resolution[0]);
+    absolutePosition[1] = cast(int) remap!float(relativePosition[1], 0, 1, 0, resolution[1]);
 
     return absolutePosition;
 }
@@ -103,7 +103,7 @@ private final class MapRenderSystem : BaseSystem
     public override void onCreated()
     {
         import powders.particle.basics;
-        mapSprite = Sprite.create(globalMap.resolution);
+        mapSprite = Sprite.create(globalMap.resolution, kc.white);
 
         foreach (ref Entity entity; globalMap)
         {
@@ -116,7 +116,7 @@ private final class MapRenderSystem : BaseSystem
     protected override void update()
     {
         mapSprite.applyChanges();
-        globalRenderer.renderAtWorldPosition([0, 0], mapSprite);
+        Renderer.instance.renderAtWorldPos([0, 0], mapSprite);
     }
 }
 
@@ -179,7 +179,7 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
 
     protected override void update()
     {
-        if(lastRenderMode != globalRenderer.currentRenderMode)
+        if(lastRenderMode != currentRenderMode)
         {
             foreach(row; chunks)
             {
@@ -188,7 +188,7 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
                     chunk_.state = ChunkState.dirty;
                 }
             }
-            final switch(globalRenderer.currentRenderMode)
+            final switch(currentRenderMode)
             {
                 case RenderMode.color: 
 
@@ -212,7 +212,7 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
                     break;
             }
 
-            lastRenderMode = globalRenderer.currentRenderMode;
+            lastRenderMode = currentRenderMode;
         }
 
         super.update();
@@ -235,19 +235,19 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
 
         immutable auto position = entity.getComponent!Position();
 
-        if(lastFrameBuffer[position.xy[1]][position.xy[0]] == renderMode2Color[globalRenderer.currentRenderMode] 
-         && lastRenderMode == globalRenderer.currentRenderMode)
+        if(lastFrameBuffer[position.xy[1]][position.xy[0]] == renderMode2Color[currentRenderMode] 
+         && lastRenderMode == currentRenderMode)
         {
             chunk.state = ChunkState.clean;
             return;
         }
 
         chunk.state = ChunkState.dirty;
-        lastRenderMode = globalRenderer.currentRenderMode;
+        lastRenderMode = currentRenderMode;
 
-        lastFrameBuffer[position.xy[1]][position.xy[0]] = renderMode2Color[globalRenderer.currentRenderMode];
+        lastFrameBuffer[position.xy[1]][position.xy[0]] = renderMode2Color[currentRenderMode];
         kc.Color color;
-        if(globalRenderer.currentRenderMode == RenderMode.temperature)
+        if(currentRenderMode == RenderMode.temperature)
         {
             import powders.particle.basics : Temperature;
             color = entity.getComponent!Temperature().value.temperature2Color();
@@ -258,62 +258,6 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
         }
         
         MapRenderSystem.instance.mapSprite.setPixel(position.xy, color); 
-    }
-}
-
-public struct Sprite
-{
-public:
-    /// Sprite's tint color
-    kc.Color color;
-    /// Sprite's image
-    Image image;
-    /// Sprite's scale
-    float[2] scale;
-    /// Sprite's origin (for rotation and scaling)
-    float[2] origin;
-    /// Sprite's rotation (degrees)
-    float rotation;
-
-    /// The raylib's texture for the sprite
-    private Texture2D texture;
-
-    static Sprite create(int[2] resolution)
-    {
-        Sprite sprite;
-
-        /*
-            Fucking d's floats are NaN's by default.
-            Maybe that's a good thing, but NOT EVEN SINGLE OTHER LANGUAGE I KNOW DOES THAT, THEY HAVE ZERO BY DEFAULT.
-        */
-        sprite.scale[] = 1f;
-        sprite.origin[] = .5f;
-        sprite.rotation = 0f;
-
-        sprite.color = kc.white;
-        sprite.image = GenImageColor(resolution[0], resolution[1], Colors.WHITE);
-        sprite.texture = LoadTextureFromImage(sprite.image);
-
-        return sprite;
-    }
-
-    /// Update texture's data after image manipulaton
-    pragma(inline, true)
-    {
-        void setPixel(int[2] position, kc.Color color)
-        {
-            ImageDrawPixel(&image, position[0], position[1], cast(raylib.Color) color);   
-        }
-
-        void applyChanges()
-        {
-            UpdateTexture(texture, image.data);
-        }
-    }
-
-    void free()
-    {
-        UnloadTexture(texture);
     }
 }
 
@@ -348,7 +292,7 @@ public int[2] mouse2TexturePosition(ref in Sprite sprite)
 } 
 
 /// Get pixel position on texture, pointed by mouse, but with world coordinates
-public int[2]   mouseWorld2TexturePosition(ref in Sprite sprite)
+public int[2] mouseWorld2TexturePosition(ref in Sprite sprite)
 {
     import raylib;
     import powders.input;
@@ -385,80 +329,7 @@ public enum RenderMode
     /// Render particle's temperature
     temperature
 }
-/// Rendererstruct to render staff
-public struct Renderer
-{
-    public RenderMode currentRenderMode;
 
-    public void startFrame() { BeginDrawing(); }
-    public void endFrame() { EndDrawing(); }
-
-    public uint[2] getResolution() const
-    {
-        uint[2] resolution;
-
-        resolution[0] = GetScreenWidth();
-        resolution[1] = GetScreenHeight();
-
-        return resolution;
-    }
-
-    public void clearScreen() const
-    {
-        ClearBackground(raylib.Color(0, 0, 0, 255));
-    }
-
-    /// Render a sprite at world position
-    /// Params:
-    ///   position = the position
-    ///   sprite = the sprite rendered at `position`
-    public void renderAtWorldPosition(float[2] position, ref in Sprite sprite)
-    {
-        BeginMode2D(globalCamera);
-
-        immutable source = Rectangle(0, 0, sprite.texture.width, sprite.texture.height);
-
-        immutable auto destination = Rectangle(position[0], position[1], 
-        sprite.texture.width * sprite.scale[0], 
-        sprite.texture.height * sprite.scale[1]);
-
-        immutable auto origin = Vector2(sprite.origin[0], sprite.origin[1]);
-
-        DrawTexturePro(sprite.texture, source, destination, origin, sprite.rotation, cast(raylib.Color) sprite.color);
-        EndMode2D();
-    }
-
-    /// Render a sprite at a relative screen position
-    /// Params:
-    ///   position = the position within range [0, 0] .. [1, 1], where [0, 0] -- upper left corner
-    ///   sprite = the sprite rendered at `position`
-    public void renderAtRelativeScreenPosition(float[2] position, ref in Sprite sprite)
-    {
-        import kernel.math;
-
-        auto absolutePosition = relativeScreenPos2ScreenPos(position);
-
-        renderAtScreenPosition(absolutePosition, sprite);
-    }
-
-    /// Render a sprite at an absolute screen position
-    /// Params:
-    ///   position = the position
-    ///   sprite = the sprite rendered at `position`
-    public void renderAtScreenPosition(uint[2] position, ref in Sprite sprite)
-    {
-        import std.stdio; writeln(position);
-        immutable auto source = Rectangle(0, 0, sprite.texture.width, sprite.texture.height);
-
-        immutable auto destination = Rectangle(position[0], position[1], 
-        sprite.texture.width * sprite.scale[0], 
-        sprite.texture.height * sprite.scale[1]);
-
-        immutable auto origin = Vector2(sprite.origin[0], sprite.origin[1]);
-
-        DrawTexturePro(sprite.texture, source, destination, origin, sprite.rotation, cast(raylib.Color) sprite.color);
-    }
-}
 
 private class RenderModeSystem : BaseSystem
 {
@@ -468,11 +339,11 @@ private class RenderModeSystem : BaseSystem
     {
         if(Input.isKeyDown(Keys.one))
         {
-            globalRenderer.currentRenderMode = RenderMode.color;
+            currentRenderMode = RenderMode.color;
         }
         else if(Input.isKeyDown(Keys.two))
         {
-            globalRenderer.currentRenderMode = RenderMode.temperature;
+            currentRenderMode = RenderMode.temperature;
         }
     }
 }
