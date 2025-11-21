@@ -9,6 +9,7 @@ import powders.particle.basics;
 import powders.particle.register;
 import powders.particle.loading;
 import powders.particle.creating;
+import powders.particle.electricity;
 import powders.rendering;
 
 /// System, that starts other systems in powders.particle module
@@ -36,6 +37,9 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!TemperatureSystem.create();
         SystemFactory!DeltaTemperatureSystem.create();
 
+        SystemFactory!ConductorSystem.create();
+        SystemFactory!SparkleSystem.create();
+
         immutable auto mapResolution = globalMap.resolution;
 
         foreach (i; 0..mapResolution[0])
@@ -61,6 +65,11 @@ public class InitialParticlesSystem : BaseSystem
         {
             if(currentRenderMode == RenderMode.temperature)
                 (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
+        };
+
+        (cast(ConductorSystem) ConductorSystem.instance).onUpdatedSparkle ~= (Entity self) 
+        {
+            (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
         };
     }
 }

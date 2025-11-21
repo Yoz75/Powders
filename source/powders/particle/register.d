@@ -4,6 +4,7 @@ module powders.particle.register;
 
 import powders.rendering;
 import powders.particle.basics;
+import powders.particle.electricity;
 import std.meta;
 import std.traits;
 
@@ -16,7 +17,7 @@ struct Dummy
 public Dummy[string] globalComponents;
 
 /// Default modules, that contain components
-public alias defaultModules = AliasSeq!(powders.particle.basics, powders.rendering);
+public alias defaultModules = AliasSeq!(powders.particle.basics, powders.rendering, powders.particle.electricity);
 
 /// What we should do with component, when particle is being destroyed?
 public enum OnDestroyAction

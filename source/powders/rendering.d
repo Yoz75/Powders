@@ -6,6 +6,7 @@ import kc = davincilib.color;
 import kernel.jsonutil;
 import powders.map;
 import powders.particle.register;
+import powders.particle.electricity : Conductor, ConductorState;
 import raylib;
 
 RenderMode currentRenderMode = RenderMode.color;
@@ -120,7 +121,7 @@ private final class MapRenderSystem : BaseSystem
     }
 }
 
-private static kc.Color temperature2Color(inout double temperature) pure
+private kc.Color temperature2Color(inout double temperature) pure
 {
     import kernel.math;
     import powders.particle.basics : Temperature;
@@ -152,9 +153,26 @@ private static kc.Color temperature2Color(inout double temperature) pure
     return color;
 }
 
+private kc.Color sparkle2Color(ConductorState state, kc.Color renderableColor) pure
+{
+    final switch(state)
+    {
+        case ConductorState.head:
+            return kc.blue;
+
+        case ConductorState.tail:
+            return kc.red;
+
+        case ConductorState.nothing:
+            return renderableColor;
+    }
+}
+
 public final class RenderableSystem : MapEntitySystem!MapRenderable
 {
     import powders.particle.basics : Temperature;
+    import powders.particle.electricity : Conductor;
+    import powders.particle.electricity : Conductor;
     import raylib;
 
     /// A buffer, that contains prefious frame. It's needed to optimize updating.
@@ -204,6 +222,16 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
 
                     foreach(x, y, entity_; globalMap)
                     {
+                        immutable auto renderableColor = entity_.getComponent!MapRenderable.color;
+                        immutable auto color = entity_.getComponent!Conductor.state.sparkle2Color(renderableColor);
+                        lastFrameBuffer[y][x] = color;
+                        MapRenderSystem.instance.mapSprite.setPixel([x, y], color); 
+                    }
+
+                    break;
+                case RenderMode.sparkle:
+                    foreach(x, y, entity_; globalMap)
+                    {
                         immutable auto color = entity_.getComponent!Temperature().value.temperature2Color();
                         lastFrameBuffer[y][x] = color;
                         MapRenderSystem.instance.mapSprite.setPixel([x, y], color); 
@@ -230,7 +258,8 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
         immutable kc.Color[RenderMode.max + 1] renderMode2Color = 
         [
             RenderMode.color: renderable.color,
-            RenderMode.temperature: entity.getComponent!Temperature.value.temperature2Color()
+            RenderMode.temperature: entity.getComponent!Temperature.value.temperature2Color(),
+            RenderMode.sparkle: entity.getComponent!Conductor.state.sparkle2Color(renderable.color)
         ];
 
         immutable auto position = entity.getComponent!Position();
@@ -249,8 +278,12 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
         kc.Color color;
         if(currentRenderMode == RenderMode.temperature)
         {
-            import powders.particle.basics : Temperature;
             color = entity.getComponent!Temperature().value.temperature2Color();
+        }
+        else if(currentRenderMode == RenderMode.sparkle)
+        {
+            immutable auto conductor = entity.getComponent!Conductor();
+            color = conductor.state.sparkle2Color(renderable.color);
         }
         else
         {  
@@ -327,7 +360,9 @@ public enum RenderMode
     /// Render particle's color
     color,
     /// Render particle's temperature
-    temperature
+    temperature,
+    /// Render particle's sparkle or color if not conductor
+    sparkle
 }
 
 
@@ -344,6 +379,10 @@ private class RenderModeSystem : BaseSystem
         else if(Input.isKeyDown(Keys.two))
         {
             currentRenderMode = RenderMode.temperature;
+        }
+        else if(Input.isKeyDown(Keys.three))
+        {
+            currentRenderMode = RenderMode.sparkle;
         }
     }
 }
