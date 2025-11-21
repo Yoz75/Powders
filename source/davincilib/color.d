@@ -20,7 +20,7 @@ public:
     @jsonize ubyte b;
     @jsonize ubyte a;    
 
-    this(ubyte r, ubyte g, ubyte b, ubyte a = 255)
+    this(ubyte r, ubyte g, ubyte b, ubyte a = 255) pure nothrow @nogc const // <-- Eat this.
     {
         this.r = r;
         this.g = g;
