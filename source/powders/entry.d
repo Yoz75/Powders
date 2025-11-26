@@ -44,7 +44,8 @@ public void powdersMain()
     immutable int width = GetScreenWidth();
     immutable int height = GetScreenHeight();
 
-    SetConfigFlags(ConfigFlags.FLAG_WINDOW_UNDECORATED);
+    SetConfigFlags(ConfigFlags.FLAG_BORDERLESS_WINDOWED_MODE);
+    SetConfigFlags(ConfigFlags.FLAG_FULLSCREEN_MODE);
     InitWindow(width, height, "Powders Game");
 
     SetTargetFPS(240);
