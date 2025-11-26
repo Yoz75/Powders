@@ -12,7 +12,6 @@ import powders.timecontrol;
 
 private class CreateMapSystem : BaseSystem
 {
-    int[1488] zalupa;
     public override void onCreated()
     {
         enum defaultRes = 512;
@@ -45,7 +44,7 @@ public void powdersMain()
     immutable int width = GetScreenWidth();
     immutable int height = GetScreenHeight();
 
-    SetConfigFlags(ConfigFlags.FLAG_FULLSCREEN_MODE);
+    SetConfigFlags(ConfigFlags.FLAG_WINDOW_UNDECORATED);
     InitWindow(width, height, "Powders Game");
 
     SetTargetFPS(240);
