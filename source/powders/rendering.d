@@ -7,6 +7,7 @@ import kernel.jsonutil;
 import powders.map;
 import powders.particle.register;
 import powders.particle.electricity : Conductor, ConductorState;
+import powders.particle.temperature;
 import raylib;
 
 RenderMode currentRenderMode = RenderMode.color;
@@ -124,7 +125,6 @@ private final class MapRenderSystem : BaseSystem
 private kc.Color temperature2Color(inout double temperature) pure
 {
     import kernel.math;
-    import powders.particle.basics : Temperature;
 
     /// Maximal temperature, that rendered as a red color. Temperatures above this value are rendered as hot.
     enum maxWarmTemperature = 1000.0;
@@ -170,7 +170,7 @@ private kc.Color sparkle2Color(ConductorState state, kc.Color renderableColor) p
 
 public final class RenderableSystem : MapEntitySystem!MapRenderable
 {
-    import powders.particle.basics : Temperature;
+    import powders.particle.temperature : Temperature;
     import powders.particle.electricity : Conductor;
     import powders.particle.electricity : Conductor;
     import raylib;
