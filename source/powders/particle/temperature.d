@@ -6,38 +6,42 @@ import powders.particle.register;
 import powders.particle.basics;
 import powders.map;
 
+// Number type used for heat and temperature
+alias TemperatureScalar = double;
+
 @Component(OnDestroyAction.setInit) public struct Temperature
 {
     mixin MakeJsonizable;
 
 public:
     /// The least fractional part of temperature
-    enum double threshold = 0.01;
+    enum TemperatureScalar threshold = 0.01;
 
-    enum double min = -273.15;
-    enum double max = 100_000;
+    enum TemperatureScalar min = -273.15;
+    enum TemperatureScalar max = 100_000;
 
-    enum double maxCondictivity = 2200;
-    enum double minConductivity = 0;
-    enum double defaultConductivity = 1500;
+    enum TemperatureScalar maxCondictivity = 2200;
+    enum TemperatureScalar minConductivity = 0;
+    enum TemperatureScalar defaultConductivity = 1500;
 
     /// Scale of conductivity normalisation
     enum conductivityScale = 250;
 
-    enum double airHeatCapacity = 1005;
-    enum double defaultTemperature = 25;
+    enum TemperatureScalar airHeatCapacity = 1005;
+    enum TemperatureScalar defaultTemperature = 25;
 
     /// The heat capacity. 
     /// Indicates how much a substance will "pull the resulting temperature onto itself" during heat exchange
-    double heatCapacity = airHeatCapacity;
+    TemperatureScalar heatCapacity = airHeatCapacity;
 
     /// How fast particle changes it's temperature.
-    double transferCoefficient = 1;
+    TemperatureScalar transferCoefficient = 1;
 
     /// Temperature of a particle in degrees Celsius
-    double value = defaultTemperature; 
+    TemperatureScalar value = defaultTemperature; 
 
-    @JsonizeField this(double value, double heatCapacity, double thermalConductivity = defaultConductivity)
+    @JsonizeField this(TemperatureScalar value, TemperatureScalar heatCapacity, 
+    TemperatureScalar thermalConductivity = defaultConductivity)
     {
         import std.math;
         this.value = value;
@@ -56,7 +60,7 @@ public @Component(OnDestroyAction.destroy) struct DeltaTemperature
     mixin MakeJsonizable;
 public:
 
-    @JsonizeField double delta;
+    @JsonizeField TemperatureScalar delta;
 }
 
 
@@ -120,7 +124,7 @@ public class TemperatureSystem : MapEntitySystem!Temperature
 
         bool isValidNeighbor, wasAnyTransfer;
         Temperature* neighborTemperature;
-        double resultTemperature = 0, selfDelta = 0, neighborDelta = 0;
+        TemperatureScalar resultTemperature = 0, selfDelta = 0, neighborDelta = 0;
 
         immutable bool isValidParticle = entity.hasComponent!Particle;
         

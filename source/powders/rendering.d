@@ -122,7 +122,7 @@ private final class MapRenderSystem : BaseSystem
     }
 }
 
-private kc.Color temperature2Color(inout double temperature) pure
+private kc.Color temperature2Color(inout TemperatureScalar temperature) pure
 {
     import kernel.math;
 
