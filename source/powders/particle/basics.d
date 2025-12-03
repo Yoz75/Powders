@@ -5,6 +5,7 @@ import kernel.ecs;
 import powders.map;
 import powders.particle.register;
 import powders.io;
+import powders.rendering;
 
 alias ParticleId = char[Particle.idSize];
 
@@ -188,25 +189,24 @@ public class ChangeGravitySystem : BaseSystem
     protected override void update()
     {
         import powders.input;
-        import raylib : IsKeyPressed, KeyboardKey;
 
-        if (Input.isKeyDown(Keys.up))
+        if (gameWindow.isKeyDown(Keys.up))
         {
             Gravity.direction = GravityDirection.up;
         }
-        else if (Input.isKeyDown(Keys.down))
+        else if (gameWindow.isKeyDown(Keys.down))
         {
             Gravity.direction = GravityDirection.down;
         }
-        else if (Input.isKeyDown(Keys.left))
+        else if (gameWindow.isKeyDown(Keys.left))
         {
             Gravity.direction = GravityDirection.left;
         }
-        else if (Input.isKeyDown(Keys.right))
+        else if (gameWindow.isKeyDown(Keys.right))
         {
             Gravity.direction = GravityDirection.right;
         }
-        else if (Input.isKeyDown(Keys.e))
+        else if (gameWindow.isKeyDown(Keys.e))
         {
             Gravity.direction = GravityDirection.none;
         }

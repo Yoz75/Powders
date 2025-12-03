@@ -3,13 +3,13 @@ module powders.particle.creating;
 
 import kernel.ecs;
 import kernel.todo;
-import powders.input;
 import powders.rendering;
 import powders.map;
 import powders.particle.register;
 import powders.particle.loading;
 import powders.particle.building;
 import powders.ui;
+import powders.rendering;
 
 mixin TODO!("OK, NOW THAT'S DYNAMIC UI, BUT NOW WE HAVE TO ADD SCROLLING OF BUTTONS");
 
@@ -120,15 +120,14 @@ public class CreateParticleSystem : BaseSystem
     protected override void update()
     {
         mixin TODO!("ADD MOUSE FUNCTIONS TO INPUT AND USE ENUM!");
-        import raylib;
 
-        if(IsMouseButtonDown(0))
+        if(gameWindow.isMouseButtonDown(MouseButtons.left))
         {
             int[2] pos = mouse2MapSpritePosition();
 
             if(pos[0] < 0 || pos[1] < 0) return; // So shit, but works
 
-            float[2] mousePos = Input.getMousePosition();
+            float[2] mousePos = gameWindow.getMousePosition();
             int[2] intPos;
             intPos[0] = cast(int) mousePos[0];
             intPos[1]= cast(int) mousePos[1];
@@ -137,13 +136,13 @@ public class CreateParticleSystem : BaseSystem
 
             buildParticle(globalMap.getAt(pos), selectedType);
         }
-        else if(IsMouseButtonDown(1))
+        else if(gameWindow.isMouseButtonDown(MouseButtons.right))
         {
             int[2] pos = mouse2MapSpritePosition();
 
             if(pos[0] < 0 || pos[1] < 0) return; // ditto
 
-            float[2] mousePos = Input.getMousePosition();
+            float[2] mousePos = gameWindow.getMousePosition();
             int[2] intPos;
             intPos[0] = cast(int) mousePos[0];
             intPos[1]= cast(int) mousePos[1];

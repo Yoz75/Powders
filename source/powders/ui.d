@@ -2,8 +2,6 @@ module powders.ui;
 
 import kernel.ecs;
 import powders.rendering;
-import raygui;
-import raylib;
 
 private UIElement[] allElements;
 
@@ -71,7 +69,7 @@ public:
     {
         import kernel.math;
 
-        immutable int[2] resolution = Renderer.instance.getWindowResolution();
+        immutable int[2] resolution = gameWindow.getWindowResolution();
 
         int[2] absolutePosition;
         absolutePosition[0] = cast(uint) remap!float(position[0], 0, 1, 0, resolution[0]);
@@ -126,11 +124,9 @@ public class UIButton : UIElement
     public string text;
 
     protected override void render(int[2] absolutePosition, int[2] absoluteScale)
-    {
-        immutable Rectangle rect = Rectangle(absolutePosition[0], absolutePosition[1], 
-            absoluteScale[0], absoluteScale[1]);
-        
-        if(GuiButton(rect, text.ptr))
+    {        
+        if(gameWindow.drawGUIButton(cast(immutable int[2]) absoluteScale, 
+            cast(immutable int[2]) absolutePosition, text))
         {
             foreach (action; onPressed)
             {

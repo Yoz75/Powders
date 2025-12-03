@@ -2,6 +2,7 @@ module powders.timecontrol;
 
 import kernel.ecs;
 import powders.input;
+import powders.rendering;
 
 GameState globalGameState;
 
@@ -22,13 +23,13 @@ public class TimeControlSystem : BaseSystem
             globalGameState = GameState.pause;
         }
 
-        if(Input.isKeyPressed(Keys.space))
+        if(gameWindow.isKeyPressed(Keys.space))
         {
             globalGameState = globalGameState == GameState.play ? GameState.pause : GameState.play;
             shouldUpdate1Frame = false;
         }
 
-        if(Input.isKeyPressed(Keys.f))
+        if(gameWindow.isKeyPressed(Keys.f))
         {
             shouldUpdate1Frame = true;
             globalGameState = globalGameState.play;

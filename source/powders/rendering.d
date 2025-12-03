@@ -8,8 +8,8 @@ import powders.map;
 import powders.particle.register;
 import powders.particle.electricity : Conductor, ConductorState;
 import powders.particle.temperature;
-import raylib;
 
+IWindow!(Sprite, Camera) gameWindow;
 RenderMode currentRenderMode = RenderMode.color;
 
 /// A thing, renderable on map
@@ -26,10 +26,6 @@ public final class InitialRenderSystem : BaseSystem
 {
     public override void onCreated()
     {
-        // Ugly, but simple. 
-        // Renderer is a singletone, so this instance will be assigned to Renderer.instance 
-        new Renderer();
-
         SystemFactory!InitRendererSystem.create();
         SystemFactory!MapRenderSystem.create();
         SystemFactory!RenderableSystem.create();
@@ -41,13 +37,13 @@ private final class InitRendererSystem : BaseSystem
 {
     protected override void beforeUpdate()
     {
-        Renderer.instance.startFrame();
-        Renderer.instance.clearScreen();
+        gameWindow.startFrame();
+        gameWindow.clearScreen();
     }
 
     protected override void afterUpdate()
     {
-        Renderer.instance.endFrame();
+        gameWindow.endFrame();
     }
 }
 
@@ -69,7 +65,7 @@ public float[2] screenPos2RelativeScreenPos(int[2] screenPosition)
 {
     import kernel.math;
 
-    immutable int[2] resolution = Renderer.instance.getWindowResolution();
+    immutable int[2] resolution = gameWindow.getWindowResolution();
     float[2] position;
 
     position[0] = remap!float(screenPosition[0], 0, resolution[0], 0, 1);
@@ -82,7 +78,7 @@ public int[2] relativeScreenPos2ScreenPos(float[2] relativePosition)
 {
     import kernel.math;
 
-    immutable int[2] resolution = Renderer.instance.getWindowResolution();
+    immutable int[2] resolution = gameWindow.getWindowResolution();
 
     int[2] absolutePosition = [0, 0];
 
@@ -105,7 +101,7 @@ private final class MapRenderSystem : BaseSystem
     public override void onCreated()
     {
         import powders.particle.basics;
-        mapSprite = Sprite.create(globalMap.resolution, kc.white);
+        mapSprite = gameWindow.createAttachedSprite(globalMap.resolution, kc.white);
 
         foreach (ref Entity entity; globalMap)
         {
@@ -117,8 +113,8 @@ private final class MapRenderSystem : BaseSystem
 
     protected override void update()
     {
-        mapSprite.applyChanges();
-        Renderer.instance.renderAtWorldPos([0, 0], mapSprite);
+        gameWindow.applySpriteChanges(cast (immutable Sprite) mapSprite);
+        gameWindow.renderAtWorldPos([0, 0], cast (immutable Sprite) mapSprite);
     }
 }
 
@@ -173,7 +169,6 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
     import powders.particle.temperature : Temperature;
     import powders.particle.electricity : Conductor;
     import powders.particle.electricity : Conductor;
-    import raylib;
 
     /// A buffer, that contains prefious frame. It's needed to optimize updating.
     private kc.Color[][] lastFrameBuffer;
@@ -214,7 +209,8 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
                     {
                         immutable auto color = entity_.getComponent!MapRenderable.color;
                         lastFrameBuffer[y][x] = color;
-                        MapRenderSystem.instance.mapSprite.setPixel([x, y], color); 
+                        gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite,
+                            [x, y], color);
                     }
                     
                     break;
@@ -225,7 +221,8 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
                         immutable auto renderableColor = entity_.getComponent!MapRenderable.color;
                         immutable auto color = entity_.getComponent!Conductor.state.sparkle2Color(renderableColor);
                         lastFrameBuffer[y][x] = color;
-                        MapRenderSystem.instance.mapSprite.setPixel([x, y], color); 
+                        gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite,
+                            [x, y], color);
                     }
 
                     break;
@@ -234,7 +231,8 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
                     {
                         immutable auto color = entity_.getComponent!Temperature().value.temperature2Color();
                         lastFrameBuffer[y][x] = color;
-                        MapRenderSystem.instance.mapSprite.setPixel([x, y], color); 
+                        gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite,
+                            [x, y], color);
                     }
 
                     break;
@@ -290,18 +288,18 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
             color = renderable.color;          
         }
         
-        MapRenderSystem.instance.mapSprite.setPixel(position.xy, color); 
+        gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite,
+            [position.xy[0], position.xy[1]], color);
     }
 }
 
 /// Get pixel position on texture, pointed by mouse
 public int[2] mouse2TexturePosition(ref in Sprite sprite)
 {
-    import raylib;
     import powders.input;
-    import std.math : cos, sin;
+    import std.math : cos, sin, PI;
 
-    immutable float[2] position = Input.getMousePosition();
+    immutable float[2] position = gameWindow.getMousePosition();
 
     immutable cx = sprite.origin[0] * sprite.texture.width * sprite.scale[0];
     immutable cy = sprite.origin[1] * sprite.texture.height * sprite.scale[1];
@@ -309,7 +307,7 @@ public int[2] mouse2TexturePosition(ref in Sprite sprite)
     immutable float lx = position[0] - cx;
     immutable float ly = position[1] - cy;
 
-    immutable rad = -sprite.rotation * DEG2RAD;
+    immutable rad = -sprite.rotation * (PI / 180);
     immutable cosr = cos(rad);
     immutable sinr = sin(rad);
 
@@ -327,11 +325,10 @@ public int[2] mouse2TexturePosition(ref in Sprite sprite)
 /// Get pixel position on texture, pointed by mouse, but with world coordinates
 public int[2] mouseWorld2TexturePosition(ref in Sprite sprite)
 {
-    import raylib;
     import powders.input;
     import std.math;
 
-    immutable float[2] position = Input.getMouseWorldPosition();
+    immutable float[2] position = gameWindow.getMouseWorldPosition();
 
     immutable cx = sprite.origin[0] * sprite.texture.width * sprite.scale[0];
     immutable cy = sprite.origin[1] * sprite.texture.height * sprite.scale[1];
@@ -339,7 +336,7 @@ public int[2] mouseWorld2TexturePosition(ref in Sprite sprite)
     immutable float lx = position[0] - cx;
     immutable float ly = position[1] - cy;
     
-    immutable rad = -sprite.rotation * DEG2RAD;
+    immutable rad = -sprite.rotation * (PI / 180);
     immutable cosr = cos(rad);
     immutable sinr = sin(rad);
 
@@ -372,15 +369,15 @@ private class RenderModeSystem : BaseSystem
 
     protected override void update()
     {
-        if(Input.isKeyDown(Keys.one))
+        if(gameWindow.isKeyDown(Keys.one))
         {
             currentRenderMode = RenderMode.color;
         }
-        else if(Input.isKeyDown(Keys.two))
+        else if(gameWindow.isKeyDown(Keys.two))
         {
             currentRenderMode = RenderMode.temperature;
         }
-        else if(Input.isKeyDown(Keys.three))
+        else if(gameWindow.isKeyDown(Keys.three))
         {
             currentRenderMode = RenderMode.sparkle;
         }

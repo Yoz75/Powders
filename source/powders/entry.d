@@ -9,6 +9,7 @@ import powders.rendering;
 import powders.input;
 import powders.ui;
 import powders.timecontrol;
+import powders.memory;
 
 private class CreateMapSystem : BaseSystem
 {
@@ -22,36 +23,31 @@ private class CreateMapSystem : BaseSystem
 
 private class ExitSystem : BaseSystem
 {
-    import raylib : WindowShouldClose;
     import core.stdc.stdlib : exit;
 
     protected override void update()
     {
-        if(WindowShouldClose()) exit(0);
+        if(gameWindow.shouldCloseWindow) exit(0);
     }
 }
 
 /// Entry point for powders
 public void powdersMain()
 {
-    import raylib;
+    import davincilib.raylibimpl;
+
     import std.functional : toDelegate;
     
     programVersion = Version.fromString(import("appVersion.txt"));
 
     World gameWorld = World.create();
-    
-    immutable int width = GetScreenWidth();
-    immutable int height = GetScreenHeight();
 
-    SetConfigFlags(ConfigFlags.FLAG_BORDERLESS_WINDOWED_MODE);
-    SetConfigFlags(ConfigFlags.FLAG_FULLSCREEN_MODE);
-    InitWindow(width, height, "Powders Game");
-
-    SetTargetFPS(240);
+    gameWindow = new Window();
+    gameWindow.initWindow([1200, 900], false, "powders!");
+    gameWindow.setTargetFPS(240);
 
     Simulation.run!(CreateMapSystem, InitialRenderSystem, InitialInputSystem,
-     InitialParticlesSystem, InitialUISystem, ExitSystem, TimeControlSystem)
+     InitialParticlesSystem, InitialUISystem, ExitSystem, TimeControlSystem, GC_CleanupSystem)
     (gameWorld, toDelegate(&beforeUpdate), toDelegate(&afterUpdate));
 
     import core.stdc.stdlib : exit;
