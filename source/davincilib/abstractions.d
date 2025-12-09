@@ -2,8 +2,6 @@ module davincilib.abstractions;
 
 import kernel.todo;
 import dvc = davincilib.color;
-import core.thread;
-import std.concurrency;
 
 /// Add sprite type's fields to your type. This mixin adds such fields like `color`, `scale`, `origin`, and `rotation`. 
 /// But you should implement other staff by yourself.
