@@ -264,7 +264,7 @@ public class Window : IWindow!(Sprite, Camera)
         __gshared Optional!(bool, Dummy) isKeyDown;
         isKeyDown = Dummy();
 
-        raylibThreadId.send(() shared
+        raylibThreadId.send(() immutable
         {
             isKeyDown = IsKeyDown(key);
         });
@@ -283,7 +283,7 @@ public class Window : IWindow!(Sprite, Camera)
         __gshared Optional!(bool, Dummy) isKeyPressed;
         isKeyPressed = Dummy();
 
-        raylibThreadId.send(() shared
+        raylibThreadId.send(() immutable
         {
             isKeyPressed = IsKeyPressed(key);
         });
@@ -302,7 +302,7 @@ public class Window : IWindow!(Sprite, Camera)
         __gshared Optional!(float[2], Dummy) resultPosition;
         resultPosition = Dummy();
 
-        raylibThreadId.send(() shared
+        raylibThreadId.send(() immutable
         {
             immutable auto position = GetMousePosition();
             resultPosition = [position.x, position.y];
@@ -322,7 +322,7 @@ public class Window : IWindow!(Sprite, Camera)
         __gshared Optional!(float[2], Dummy) resultPosition;
         resultPosition = Dummy();
 
-        raylibThreadId.send(() shared
+        raylibThreadId.send(() immutable
         {
             immutable auto position = GetScreenToWorld2D(GetMousePosition(), camera);
             resultPosition = [position.x, position.y];
@@ -342,7 +342,7 @@ public class Window : IWindow!(Sprite, Camera)
         __gshared Optional!(bool, Dummy) result;
         result = Dummy();
 
-        raylibThreadId.send(() shared
+        raylibThreadId.send(() immutable
         { 
             result = GuiButton(Rectangle(absolutePosition[0], absolutePosition[1], 
                 absoluteScale[0], absoluteScale[1]), text.ptr) > 0;
@@ -359,7 +359,7 @@ public class Window : IWindow!(Sprite, Camera)
         
         __gshared Optional!(Sprite, Dummy) result;
         result = Dummy();
-        raylibThreadId.send(() shared
+        raylibThreadId.send(() immutable
         { 
             result = Sprite.create(resolution, color);
         });        
@@ -384,7 +384,7 @@ public class Window : IWindow!(Sprite, Camera)
         __gshared Optional!(float, Dummy) result;
         result = Dummy();
 
-        raylibThreadId.send(() shared
+        raylibThreadId.send(() immutable
         { 
             result = GetFrameTime();
         });
@@ -401,7 +401,7 @@ public class Window : IWindow!(Sprite, Camera)
         __gshared Optional!(float, Dummy) result;
         result = Dummy();
 
-        raylibThreadId.send(() shared
+        raylibThreadId.send(() immutable
         { 
             result = GetMouseWheelMove();
         });
@@ -418,7 +418,7 @@ public class Window : IWindow!(Sprite, Camera)
         __gshared Optional!(bool, Dummy) isKeyPressed;
         isKeyPressed = Dummy();
 
-        raylibThreadId.send(() shared
+        raylibThreadId.send(() immutable
         {
             isKeyPressed = IsMouseButtonDown(button);
         });
@@ -435,7 +435,7 @@ public class Window : IWindow!(Sprite, Camera)
         __gshared Optional!(float[2], Dummy) result;
         result = Dummy();
 
-        raylibThreadId.send(() shared
+        raylibThreadId.send(() immutable
         { 
             Vector2 vectorResult = GetScreenToWorld2D(Vector2(screenPosition[0], screenPosition[1]), camera);
             result = [vectorResult.x, vectorResult.y];
