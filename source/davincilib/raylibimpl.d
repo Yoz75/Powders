@@ -137,13 +137,18 @@ private void renderSpriteAtScreen(T)(immutable T[2] position, immutable Sprite s
     DrawTexturePro(sprite.texture, source, destination, origin, sprite.rotation, cast(raylib.Color) sprite.color);
 }
 
-import std.variant : Variant;
-private alias raylibMessage = Variant;
+private alias raylibMessage = void delegate() immutable @system;
+private alias anotherRaylibMessage = void delegate() immutable nothrow @nogc @system;
 private void raylibThread(immutable InitWindowInfo initInfo)
 {
     import raylib;
 
     auto messageHandler = (raylibMessage msg)
+    {
+        msg();
+    };
+
+    auto anotherMessageHandler = (anotherRaylibMessage msg)
     {
         msg();
     };
@@ -157,7 +162,7 @@ private void raylibThread(immutable InitWindowInfo initInfo)
 
     while(true)
     {
-        receiveTimeout(-1.msecs, messageHandler);
+        receiveTimeout(-1.msecs, messageHandler, anotherMessageHandler);
 
         shouldCloseWindow_ = WindowShouldClose();
         windowResolution = [GetScreenWidth(), GetScreenHeight()];
@@ -188,12 +193,12 @@ public class Window : IWindow!(Sprite, Camera)
     
     void startFrame()
     {
-        raylibThreadId.send(&BeginDrawing);
+        raylibThreadId.send(() immutable {BeginDrawing();});
     }
 
     void endFrame()
     {
-        raylibThreadId.send(&EndDrawing);
+        raylibThreadId.send(() immutable {EndDrawing();});
     }
 
     Camera getCamera()
