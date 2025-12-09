@@ -16,7 +16,6 @@ private class CreateMapSystem : BaseSystem
     public override void onCreated()
     {
         enum defaultRes = 512;
-
         globalMap = Map([defaultRes, defaultRes]);
     }
 }
@@ -43,7 +42,7 @@ public void powdersMain()
     World gameWorld = World.create();
 
     gameWindow = new Window();
-    gameWindow.initWindow([1200, 900], false, "powders!");
+    gameWindow.initWindow([1200, 900], true, "powders!");
     gameWindow.setTargetFPS(240);
 
     Simulation.run!(CreateMapSystem, InitialRenderSystem, InitialInputSystem,

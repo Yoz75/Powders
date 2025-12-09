@@ -153,9 +153,16 @@ private void raylibThread(immutable InitWindowInfo initInfo)
         msg();
     };
 
-    SetConfigFlags((ConfigFlags.FLAG_FULLSCREEN_MODE |
-    ConfigFlags.FLAG_BORDERLESS_WINDOWED_MODE)& initInfo.isFullscreen);
-    InitWindow(initInfo.resolution[0], initInfo.resolution[1], initInfo.title.ptr);
+    if(initInfo.isFullscreen)
+    {
+        SetConfigFlags((ConfigFlags.FLAG_FULLSCREEN_MODE | ConfigFlags.FLAG_BORDERLESS_WINDOWED_MODE));    
+        InitWindow(GetScreenWidth(), GetScreenHeight(), initInfo.title.ptr);
+    }
+    else
+    {
+        InitWindow(initInfo.resolution[0], initInfo.resolution[1], initInfo.title.ptr);
+    }
+    
     wasInited = true;
 
     screenResolution = [GetScreenWidth(), GetScreenHeight()];
