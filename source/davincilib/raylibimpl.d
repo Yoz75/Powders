@@ -467,6 +467,6 @@ public class Window : IWindow!(Sprite, Camera)
     /// Just a thing that waits 1 msec, so compiler won't optimize out loops
     pragma(inline, true) private void wait()
     {
-        import core.thread; Thread.getThis.sleep(1.msecs);
+        import core.thread; Thread.getThis.sleep(1.nsecs);
     }
 }
