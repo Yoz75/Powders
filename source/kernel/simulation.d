@@ -2,7 +2,6 @@
 module kernel.simulation;
 
 import kernel.ecs;
-import dlib.container.array;
 
 public final abstract class Simulation
 {
