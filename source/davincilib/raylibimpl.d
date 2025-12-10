@@ -139,6 +139,10 @@ public:
     bool[Keys.max + 1] keyDownStates;
     bool[Keys.max + 1] keyPressedStates;
     float[2] mousePosition = [0, 0], mouseWorldPosition = [0, 0];
+    float deltaTime;
+    float mouseWheelMove;
+    bool[MouseButtons.max + 1] mouseButtonsDownStates;
+    bool[MouseButtons.max + 1] mouseButtonsPressedStates;
 }
 
 /*
@@ -165,6 +169,17 @@ private void updateMousePosition(shared RenderThreadContext* context)
 
     context.mousePosition = [tempMousePosition.x, tempMousePosition.y];
     context.mouseWorldPosition = [tempMouseWorldPosition.x, tempMouseWorldPosition.y];
+}
+
+private void updateouseButtons(shared RenderThreadContext* context)
+{
+    import raylib;
+
+    for(int i; i < context.mouseButtonsDownStates.length; i++)
+    {
+        context.mouseButtonsDownStates[i] = IsMouseButtonDown(i);
+        context.mouseButtonsPressedStates[i] = IsMouseButtonPressed(i);
+    }
 }
 /*
     END
@@ -205,9 +220,12 @@ private void raylibThread(immutable InitWindowInfo initInfo, shared RenderThread
     {
         updateKeys(context);
         updateMousePosition(context);
+        updateouseButtons(context);
 
         context.shouldCloseWindow = WindowShouldClose();
         context.windowResolution = [GetScreenWidth(), GetScreenHeight()];
+        context.deltaTime = GetFrameTime();
+        context.mouseWheelMove = GetMouseWheelMove();
 
         receiveTimeout(-1.msecs, messageHandler, anotherMessageHandler);
     }
@@ -380,72 +398,45 @@ public class Window : IWindow!(Sprite, Camera)
 
     float getDeltaTime()
     {
-        struct Dummy {}
-
-        __gshared Optional!(float, Dummy) result;
-        result = Dummy();
-
-        raylibThreadId.send(() immutable
-        { 
-            result = GetFrameTime();
-        });
-
-        while(!result.hasValue) {wait();}
-
-        return result.value;
+        return renderContext.deltaTime;
     }
 
     float getMouseWheelMove()
     {
-        struct Dummy {}
-
-        __gshared Optional!(float, Dummy) result;
-        result = Dummy();
-
-        raylibThreadId.send(() immutable
-        { 
-            result = GetMouseWheelMove();
-        });
-
-        while(!result.hasValue) {wait();}
-
-        return result.value;
+        return renderContext.mouseWheelMove;
     }
 
     bool isMouseButtonDown(immutable MouseButtons button)
     {
-        struct Dummy {}
-
-        __gshared Optional!(bool, Dummy) isKeyPressed;
-        isKeyPressed = Dummy();
-
-        raylibThreadId.send(() immutable
-        {
-            isKeyPressed = IsMouseButtonDown(button);
-        });
-
-        while(!isKeyPressed.hasValue) {wait();}
-
-        return isKeyPressed.value;
+        return renderContext.mouseButtonsDownStates[button];
     }
 
-    float[2] convertScreen2WorldPosition(immutable int[2] screenPosition)    
+    float[2] convertScreen2WorldPosition(immutable int[2] screenPosition) pure
     {
-        struct Dummy {}
+        immutable float screenX = cast(float)screenPosition[0];
+        immutable float screenY = cast(float)screenPosition[1];
 
-        __gshared Optional!(float[2], Dummy) result;
-        result = Dummy();
+        immutable float relativeX = (screenX - camera.offset.x) / camera.zoom;
+        immutable float relativeY = (screenY - camera.offset.y) / camera.zoom;
 
-        raylibThreadId.send(() immutable
-        { 
-            Vector2 vectorResult = GetScreenToWorld2D(Vector2(screenPosition[0], screenPosition[1]), camera);
-            result = [vectorResult.x, vectorResult.y];
-        });
+        immutable float rotationRadians = -camera.rotation * PI / 180.0f;
 
-        while(!result.hasValue) {wait();}
+        immutable float rotationCosine = cos(rotationRadians);
+        immutable float rotationSine = sin(rotationRadians);
 
-        return result.value;
+        immutable float worldX =
+            camera.target.x +
+            relativeX * rotationCosine -
+            relativeY * rotationSine;
+
+        immutable float worldY =
+            camera.target.y +
+            relativeX * rotationSine +
+            relativeY * rotationCosine;
+
+        return [worldX, worldY];
     }
+
 
     void setPixelOfSprite(immutable Sprite attachedSprite, immutable int[2] position, immutable davincilib.Color color)
     {
