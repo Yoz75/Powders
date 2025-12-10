@@ -169,8 +169,8 @@ private void updateMousePosition(shared RenderThreadContext* context)
 /*
     END
 */
-private
- alias raylibMessage = void delegate() immutable @system;
+
+private alias raylibMessage = void delegate() immutable @system;
 private alias anotherRaylibMessage = void delegate() immutable nothrow @nogc @system;
 private void raylibThread(immutable InitWindowInfo initInfo, shared RenderThreadContext* context) //ptr because spawn has a strange behaviour according to refs
 {
