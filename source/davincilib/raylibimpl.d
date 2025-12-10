@@ -153,8 +153,6 @@ private void updateKeys(shared RenderThreadContext* context)
         context.prevFrameKeyStates[i] = context.keyStates[i];
         context.keyStates[i] = IsKeyDown(i);
     }
-
-    context.keyStates[256] = true;
 }
 
 private void updateMousePosition(shared RenderThreadContext* context)
