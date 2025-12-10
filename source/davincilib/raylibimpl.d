@@ -103,16 +103,6 @@ public int[2] relativeScreenPos2ScreenPos(float[2] relativePosition, int[2] reso
 import core.thread;
 import std.concurrency;
 
-/*
-    THESE VARIABLES SHOULD BE ONLY WRITTEN BY RAYLIB THREAD!!!
-*/
-private shared int[2] windowResolution, screenResolution;
-private shared bool shouldCloseWindow_;
-private shared bool wasInited = false;
-/*
-    END
-*/
-
 // ConsoleFontInfoEx ahhh core😭😭😭
 private struct InitWindowInfo
 {
@@ -137,14 +127,59 @@ private void renderSpriteAtScreen(T)(immutable T[2] position, immutable Sprite s
     DrawTexturePro(sprite.texture, source, destination, origin, sprite.rotation, cast(raylib.Color) sprite.color);
 }
 
-private alias raylibMessage = void delegate() immutable @system;
+private struct RenderThreadContext
+{
+public:
+
+    int[2] windowResolution, screenResolution;
+    bool shouldCloseWindow;
+    bool wasInited = false;
+
+    Camera* camera;
+    bool[Keys.max + 1] keyStates;
+    bool[Keys.max + 1] prevFrameKeyStates;
+    float[2] mousePosition = [0, 0], mouseWorldPosition = [0, 0];
+}
+
+/*
+    CALL THESE FUNCTIONS ONLY IN THE RENDER THREAD
+*/
+private void updateKeys(shared RenderThreadContext* context)
+{
+    import raylib;
+    
+    for(int i; i < context.keyStates.length; i++)
+    {
+        context.prevFrameKeyStates[i] = context.keyStates[i];
+        context.keyStates[i] = IsKeyDown(i);
+    }
+
+    context.keyStates[256] = true;
+}
+
+private void updateMousePosition(shared RenderThreadContext* context)
+{
+    import raylib;
+
+    auto tempMousePosition = GetMousePosition();
+    auto tempMouseWorldPosition = GetScreenToWorld2D(tempMousePosition, *context.camera);
+
+    context.mousePosition = [tempMousePosition.x, tempMousePosition.y];
+    context.mouseWorldPosition = [tempMouseWorldPosition.x, tempMouseWorldPosition.y];
+}
+/*
+    END
+*/
+private
+ alias raylibMessage = void delegate() immutable @system;
 private alias anotherRaylibMessage = void delegate() immutable nothrow @nogc @system;
-private void raylibThread(immutable InitWindowInfo initInfo)
+private void raylibThread(immutable InitWindowInfo initInfo, shared RenderThreadContext* context) //ptr because spawn has a strange behaviour according to refs
 {
     import raylib;
 
     auto messageHandler = (raylibMessage msg)
     {
+        import std.stdio;
         msg();
     };
 
@@ -163,16 +198,19 @@ private void raylibThread(immutable InitWindowInfo initInfo)
         InitWindow(initInfo.resolution[0], initInfo.resolution[1], initInfo.title.ptr);
     }
     
-    wasInited = true;
+    context.wasInited = true;
 
-    screenResolution = [GetScreenWidth(), GetScreenHeight()];
+    context.screenResolution = [GetScreenWidth(), GetScreenHeight()];
 
     while(true)
     {
-        receiveTimeout(-1.msecs, messageHandler, anotherMessageHandler);
+        updateKeys(context);
+        updateMousePosition(context);
 
-        shouldCloseWindow_ = WindowShouldClose();
-        windowResolution = [GetScreenWidth(), GetScreenHeight()];
+        context.shouldCloseWindow = WindowShouldClose();
+        context.windowResolution = [GetScreenWidth(), GetScreenHeight()];
+
+        receiveTimeout(-1.msecs, messageHandler, anotherMessageHandler);
     }
 }
 
@@ -182,10 +220,12 @@ public class Window : IWindow!(Sprite, Camera)
 
     private Tid raylibThreadId;
     private shared Camera camera;
+    private shared RenderThreadContext renderContext;
 
     void initWindow(immutable int[2] resolution, immutable bool isFullscreen, immutable string title)
     {
         camera  = Camera2D(Vector2(0, 0), Vector2(0, 0), 0, 0);
+        renderContext.camera = &camera;
 
         InitWindowInfo initInfo;
 
@@ -193,9 +233,9 @@ public class Window : IWindow!(Sprite, Camera)
         initInfo.isFullscreen = isFullscreen;
         initInfo.title = title;
 
-        raylibThreadId = spawn(&raylibThread, initInfo);
+        raylibThreadId = spawn(&raylibThread, initInfo, &renderContext);
 
-        while(!wasInited) {wait();}
+        while(!renderContext.wasInited) {wait();}
     }
     
     void startFrame()
@@ -222,13 +262,13 @@ public class Window : IWindow!(Sprite, Camera)
     /// Returns: the window resolution
     int[2] getWindowResolution()
     {
-        return windowResolution;
+        return renderContext.windowResolution;
     }
 
     /// Should window be closed?
     bool shouldCloseWindow()
     {
-        return shouldCloseWindow_;
+        return renderContext.shouldCloseWindow;
     }
 
     /// Render an instance of `TSprite` at a screen position
@@ -271,78 +311,28 @@ public class Window : IWindow!(Sprite, Camera)
     /// Returns: true if key is down, false if not
     bool isKeyDown(immutable Keys key)
     {
-        struct Dummy {}
-
-        __gshared Optional!(bool, Dummy) isKeyDown;
-        isKeyDown = Dummy();
-
-        raylibThreadId.send(() immutable
-        {
-            isKeyDown = IsKeyDown(key);
-        });
-
-        while(!isKeyDown.hasValue) {wait();}
-
-        return isKeyDown.value;
+        return renderContext.keyStates[key];
     }
 
     /// Was key prassed this frame?
     /// Returns: true if key was pressed this frame, false otherwise
     bool isKeyPressed(immutable Keys key)
     {
-        struct Dummy {}
-
-        __gshared Optional!(bool, Dummy) isKeyPressed;
-        isKeyPressed = Dummy();
-
-        raylibThreadId.send(() immutable
-        {
-            isKeyPressed = IsKeyPressed(key);
-        });
-
-        while(!isKeyPressed.hasValue) {wait();}
-
-        return isKeyPressed.value;
+        return renderContext.keyStates[key] && !renderContext.prevFrameKeyStates[key];
     }
 
     /// Get position of mouse
     /// Returns: position of mouse as float[2]
     float[2] getMousePosition()
     {
-        struct Dummy {}
-
-        __gshared Optional!(float[2], Dummy) resultPosition;
-        resultPosition = Dummy();
-
-        raylibThreadId.send(() immutable
-        {
-            immutable auto position = GetMousePosition();
-            resultPosition = [position.x, position.y];
-        });
-
-        while(!resultPosition.hasValue) {wait();}
-
-        return resultPosition.value;
+        return renderContext.mousePosition;
     }
 
     /// Get position of mouse, but at world coordinates
     /// Returns: position of mouse as float[2]
     float[2] getMouseWorldPosition()
     {
-        struct Dummy {}
-
-        __gshared Optional!(float[2], Dummy) resultPosition;
-        resultPosition = Dummy();
-
-        raylibThreadId.send(() immutable
-        {
-            immutable auto position = GetScreenToWorld2D(GetMousePosition(), camera);
-            resultPosition = [position.x, position.y];
-        });
-
-        while(!resultPosition.hasValue) {wait();}
-
-        return resultPosition.value;
+        return renderContext.mouseWorldPosition;
     }
     
     import raygui;
