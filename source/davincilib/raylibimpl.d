@@ -136,8 +136,8 @@ public:
     bool wasInited = false;
 
     Camera* camera;
-    bool[Keys.max + 1] keyStates;
-    bool[Keys.max + 1] prevFrameKeyStates;
+    bool[Keys.max + 1] keyDownStates;
+    bool[Keys.max + 1] keyPressedStates;
     float[2] mousePosition = [0, 0], mouseWorldPosition = [0, 0];
 }
 
@@ -148,10 +148,11 @@ private void updateKeys(shared RenderThreadContext* context)
 {
     import raylib;
     
-    for(int i; i < context.keyStates.length; i++)
+    for(int i; i < context.keyDownStates.length; i++)
     {
-        context.prevFrameKeyStates[i] = context.keyStates[i];
-        context.keyStates[i] = IsKeyDown(i);
+        // Idk why (maybe because of multythreading) the scheme with current states and previous states just don't work :\
+        context.keyPressedStates[i] = IsKeyPressed(i);
+        context.keyDownStates[i] = IsKeyDown(i);
     }
 }
 
@@ -309,14 +310,14 @@ public class Window : IWindow!(Sprite, Camera)
     /// Returns: true if key is down, false if not
     bool isKeyDown(immutable Keys key)
     {
-        return renderContext.keyStates[key];
+        return renderContext.keyDownStates[key];
     }
 
     /// Was key prassed this frame?
     /// Returns: true if key was pressed this frame, false otherwise
     bool isKeyPressed(immutable Keys key)
     {
-        return renderContext.keyStates[key] && !renderContext.prevFrameKeyStates[key];
+        return renderContext.keyPressedStates[key];
     }
 
     /// Get position of mouse
