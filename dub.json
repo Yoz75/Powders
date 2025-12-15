@@ -3,10 +3,31 @@
 		"yoz75"
 	],
 	"buildTypes": {
+		"release-lto": {
+			"dflags": [
+				"-release",
+				"-O3",
+				"-flto=full",
+				"-defaultlib=phobos2-ldc-lto,druntime-ldc-lto"
+			]
+		},
+
 		"release-subsystem-windows": {
 			"dflags": [
 				"-release",
 				"-O3"
+			],
+			"lflags-windows": [
+				"-subsystem:windows"
+			]
+		},
+
+		"release-subsystem-windows-lto": {
+			"dflags": [
+				"-release",
+				"-O3",
+				"-flto=full",
+				"-defaultlib=phobos2-ldc-lto,druntime-ldc-lto"
 			],
 			"lflags-windows": [
 				"-subsystem:windows"
