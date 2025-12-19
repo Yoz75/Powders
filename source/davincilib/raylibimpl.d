@@ -189,45 +189,55 @@ private alias raylibMessage = void delegate() immutable @system;
 private alias anotherRaylibMessage = void delegate() immutable nothrow @nogc @system;
 private void raylibThread(immutable InitWindowInfo initInfo, shared RenderThreadContext* context) //ptr because spawn has a strange behaviour according to refs
 {
-    import raylib;
-
-    auto messageHandler = (raylibMessage msg)
+    try
     {
-        import std.stdio;
-        msg();
-    };
+        import raylib;
 
-    auto anotherMessageHandler = (anotherRaylibMessage msg)
-    {
-        msg();
-    };
+        auto messageHandler = (raylibMessage msg)
+        {
+            import std.stdio;
+            msg();
+        };
 
-    if(initInfo.isFullscreen)
-    {
-        SetConfigFlags((ConfigFlags.FLAG_FULLSCREEN_MODE | ConfigFlags.FLAG_BORDERLESS_WINDOWED_MODE));    
-        InitWindow(GetScreenWidth(), GetScreenHeight(), initInfo.title.ptr);
+        auto anotherMessageHandler = (anotherRaylibMessage msg)
+        {
+            msg();
+        };
+
+        if(initInfo.isFullscreen)
+        {
+            SetConfigFlags((ConfigFlags.FLAG_FULLSCREEN_MODE | ConfigFlags.FLAG_BORDERLESS_WINDOWED_MODE));    
+            InitWindow(GetScreenWidth(), GetScreenHeight(), initInfo.title.ptr);
+        }
+        else
+        {
+            InitWindow(initInfo.resolution[0], initInfo.resolution[1], initInfo.title.ptr);
+        }
+        
+        context.wasInited = true;
+
+        context.screenResolution = [GetScreenWidth(), GetScreenHeight()];
+
+        while(true)
+        {
+            updateKeys(context);
+            updateMousePosition(context);
+            updateouseButtons(context);
+
+            context.shouldCloseWindow = WindowShouldClose();
+            context.windowResolution = [GetScreenWidth(), GetScreenHeight()];
+            context.deltaTime = GetFrameTime();
+            context.mouseWheelMove = GetMouseWheelMove();
+
+            receiveTimeout(-1.msecs, messageHandler, anotherMessageHandler);
+        }
     }
-    else
+    catch(Throwable ex)
     {
-        InitWindow(initInfo.resolution[0], initInfo.resolution[1], initInfo.title.ptr);
-    }
-    
-    context.wasInited = true;
+        import core.stdc.stdlib;
+        import std.stdio; writeln("FATAL RENDER THREAD ERROR: ", ex.message);
 
-    context.screenResolution = [GetScreenWidth(), GetScreenHeight()];
-
-    while(true)
-    {
-        updateKeys(context);
-        updateMousePosition(context);
-        updateouseButtons(context);
-
-        context.shouldCloseWindow = WindowShouldClose();
-        context.windowResolution = [GetScreenWidth(), GetScreenHeight()];
-        context.deltaTime = GetFrameTime();
-        context.mouseWheelMove = GetMouseWheelMove();
-
-        receiveTimeout(-1.msecs, messageHandler, anotherMessageHandler);
+        exit(-2);
     }
 }
 
@@ -458,5 +468,10 @@ public class Window : IWindow!(Sprite, Camera)
     pragma(inline, true) private void wait()
     {
         import core.thread; Thread.getThis.sleep(1.nsecs);
+    }
+
+    bool[Keys.max + 1] getKeyStates()
+    {
+        return renderContext.keyDownStates;
     }
 }

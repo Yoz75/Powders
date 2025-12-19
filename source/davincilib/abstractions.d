@@ -186,4 +186,6 @@ public:
         immutable davincilib.Color color);
 
     void applySpriteChanges(immutable TSprite attachedSprite);
+
+    bool[Keys.max + 1] getKeyStates();
 }
