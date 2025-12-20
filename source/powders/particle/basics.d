@@ -93,6 +93,15 @@ public class MovableSystem : MapEntitySystem!Movable
     /// Calls when `self` moved and swapped with `other`
     public void delegate(Entity self, Entity other)[] onMoved;
 
+    public override void onCreated()
+    {
+        onMoved ~= (Entity self, Entity other) 
+        {
+            (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
+            (cast(RenderableSystem) RenderableSystem.instance).markDirty(other);
+        };
+    }
+
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Movable movable)
     {
         import std.math : round;

@@ -11,7 +11,6 @@ import powders.particle.loading;
 import powders.particle.creating;
 import powders.particle.electricity;
 import powders.particle.temperature;
-import powders.rendering;
 
 /// System, that starts other systems in powders.particle module
 public class InitialParticlesSystem : BaseSystem
@@ -55,22 +54,5 @@ public class InitialParticlesSystem : BaseSystem
         {
             entity.addComponent!Temperature(Temperature.init);
         }
-
-        (cast(MovableSystem) MovableSystem.instance).onMoved ~= (Entity self, Entity other) 
-        {
-            (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
-            (cast(RenderableSystem) RenderableSystem.instance).markDirty(other);
-        };
-
-        (cast(TemperatureSystem) TemperatureSystem.instance).onTemperatureChanged ~= (Entity self) 
-        {
-            if(currentRenderMode == RenderMode.temperature)
-                (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
-        };
-
-        (cast(ConductorSystem) ConductorSystem.instance).onUpdatedSparkle ~= (Entity self) 
-        {
-            (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
-        };
     }
 }

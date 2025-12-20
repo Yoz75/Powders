@@ -33,6 +33,17 @@ public class ConductorSystem : MapEntitySystem!Conductor
 {
     /// Action, that calls when particle became charged or uncharged
     public void delegate(Entity entity)[] onUpdatedSparkle;
+    
+    public override void onCreated()
+    {
+        onUpdatedSparkle ~= (Entity self) 
+        {
+            (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
+        };
+
+        assert(RenderModeSystem.instance !is null, "Render mode system is not initialized but we add render mode!!!");
+        RenderModeSystem.instance.addRenderMode(&conductorState2Color, Keys.three);
+    }
 
     protected override void update()
     {
@@ -109,4 +120,25 @@ public class SparkleSystem : MapEntitySystem!Sparkle
     {
         // nothing
     }
+}
+
+public Color conductorState2Color(Entity entity)
+{
+    import davincilib.color;
+
+    immutable auto conductor = entity.getComponent!Conductor();
+
+    final switch(conductor.state)
+    {
+        case ConductorState.head:
+            return blue;
+
+        case ConductorState.tail:
+            return red;
+
+        case ConductorState.nothing:
+            return entity.getComponent!MapRenderable().color;
+    }
+
+    return black; // should never happen
 }

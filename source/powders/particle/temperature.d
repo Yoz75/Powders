@@ -91,6 +91,16 @@ public class TemperatureSystem : MapEntitySystem!Temperature
             temperatureCache ~= &entity.getComponent!Temperature();
             positionCache ~= &entity.getComponent!Position();
         }
+
+        import powders.rendering;
+        onTemperatureChanged ~= (Entity self) 
+        {
+            if(RenderModeSystem.instance.getCurrentRenderModeConverter() == &temperature2Color)
+                (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
+        };
+
+        assert(RenderModeSystem.instance !is null, "Render mode system is not initialized but we add render mode!!!");
+        RenderModeSystem.instance.addRenderMode(&temperature2Color, Keys.two);
     }
 
     protected override void onAdd(Entity entity)
@@ -203,4 +213,37 @@ public class DeltaTemperatureSystem : MapEntitySystem!DeltaTemperature
     {
         //nothing;
     }
+}
+
+import davincilib.color;
+public Color temperature2Color(Entity entity)
+{
+    import kernel.math;
+
+    /// Maximal temperature, that rendered as a red color. Temperatures above this value are rendered as hot.
+    enum maxWarmTemperature = 1000.0;
+    enum maxHotTemperature = Temperature.max;
+
+    immutable auto temperature = entity.getComponent!Temperature().value;
+    Color color;
+
+    immutable ubyte normalizedWarm = 
+    cast(ubyte) remap(temperature, 0, maxWarmTemperature, 0, 255);
+
+    immutable ubyte normalizedHot = 
+    cast(ubyte) remap(temperature, maxWarmTemperature, maxHotTemperature, 200, 255);
+
+    immutable ubyte normalizedCold = 
+    cast(ubyte) remap(temperature, 0, Temperature.min, 0, 255);
+
+    ubyte warmColor = normalizedWarm * cast(ubyte) (temperature > 0 && temperature <= maxWarmTemperature);
+    ubyte hotColor = normalizedHot * cast(ubyte) (temperature > maxWarmTemperature);
+    ubyte coldColor = normalizedCold * cast(ubyte) (temperature < 0);
+
+    // If temperature > 0 -- warm colors (or hot if temperature is too big), if 0 -- black, else -- cold colors
+    color.r = cast(ubyte) (warmColor + hotColor);
+    color.g = hotColor;
+    color.b = cast(ubyte) (coldColor + hotColor);
+    color.a = 255;
+    return color;
 }

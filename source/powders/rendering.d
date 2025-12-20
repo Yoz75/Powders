@@ -10,7 +10,6 @@ import powders.particle.electricity : Conductor, ConductorState;
 import powders.particle.temperature;
 
 IWindow!(Sprite, Camera) gameWindow;
-RenderMode currentRenderMode = RenderMode.color;
 
 /// A thing, renderable on map
 @Component(OnDestroyAction.setInit) public struct MapRenderable
@@ -118,51 +117,8 @@ private final class MapRenderSystem : BaseSystem
     }
 }
 
-private kc.Color temperature2Color(inout TemperatureScalar temperature) pure
-{
-    import kernel.math;
-
-    /// Maximal temperature, that rendered as a red color. Temperatures above this value are rendered as hot.
-    enum maxWarmTemperature = 1000.0;
-    enum maxHotTemperature = Temperature.max;
-
-    kc.Color color;
-
-    immutable ubyte normalizedWarm = 
-    cast(ubyte) remap(temperature, 0, maxWarmTemperature, 0, 255);
-
-    immutable ubyte normalizedHot = 
-    cast(ubyte) remap(temperature, maxWarmTemperature, maxHotTemperature, 200, 255);
-
-    immutable ubyte normalizedCold = 
-    cast(ubyte) remap(temperature, 0, Temperature.min, 0, 255);
-
-    ubyte warmColor = normalizedWarm * cast(ubyte) (temperature > 0 && temperature <= maxWarmTemperature);
-    ubyte hotColor = normalizedHot * cast(ubyte) (temperature > maxWarmTemperature);
-    ubyte coldColor = normalizedCold * cast(ubyte) (temperature < 0);
-
-    // If temperature > 0 -- warm colors (or hot if temperature is too big), if 0 -- black, else -- cold colors
-    color.r = cast(ubyte) (warmColor + hotColor);
-    color.g = hotColor;
-    color.b = cast(ubyte) (coldColor + hotColor);
-    color.a = 255;
-    return color;
-}
-
-private kc.Color sparkle2Color(ConductorState state, kc.Color renderableColor) pure
-{
-    final switch(state)
-    {
-        case ConductorState.head:
-            return kc.blue;
-
-        case ConductorState.tail:
-            return kc.red;
-
-        case ConductorState.nothing:
-            return renderableColor;
-    }
-}
+/// Function type, that convert entity to color. E.g convert entity's temperature to color and etc
+alias renderModeConverter = kc.Color function(Entity entity);
 
 public final class RenderableSystem : MapEntitySystem!MapRenderable
 {
@@ -170,11 +126,13 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
     import powders.particle.electricity : Conductor;
     import powders.particle.electricity : Conductor;
 
+    private renderModeConverter currentRenderModeConverter;
+
     /// A buffer, that contains prefious frame. It's needed to optimize updating.
     private kc.Color[][] lastFrameBuffer;
 
     /// Previous state of render mode. Needed to fix render modes after last optimization, bruh
-    private RenderMode lastRenderMode;
+    private renderModeConverter lastRenderModeConverter;
 
     public override void onCreated()
     {
@@ -192,7 +150,7 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
 
     protected override void update()
     {
-        if(lastRenderMode != currentRenderMode)
+        if(lastRenderModeConverter != currentRenderModeConverter)
         {
             foreach(row; chunks)
             {
@@ -201,46 +159,15 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
                     chunk_.state = ChunkState.dirty;
                 }
             }
-            final switch(currentRenderMode)
+
+            foreach(x, y, entity_; globalMap)
             {
-                case RenderMode.color: 
-
-                    foreach(x, y, entity_; globalMap)
-                    {
-                        immutable auto color = entity_.getComponent!MapRenderable.color;
-                        lastFrameBuffer[y][x] = color;
-                        gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite,
-                            [x, y], color);
-                    }
-                    
-                    break;
-                case RenderMode.temperature:
-
-                    foreach(x, y, entity_; globalMap)
-                    {
-                        immutable auto renderableColor = entity_.getComponent!MapRenderable.color;
-                        immutable auto color = entity_.getComponent!Conductor.state.sparkle2Color(renderableColor);
-                        lastFrameBuffer[y][x] = color;
-                        gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite,
-                            [x, y], color);
-                    }
-
-                    break;
-                case RenderMode.sparkle:
-                    foreach(x, y, entity_; globalMap)
-                    {
-                        immutable auto color = entity_.getComponent!Temperature().value.temperature2Color();
-                        lastFrameBuffer[y][x] = color;
-                        gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite,
-                            [x, y], color);
-                    }
-
-                    break;
+                immutable auto color = currentRenderModeConverter(entity_);
+                lastFrameBuffer[y][x] = color;
+                gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite, [x, y], color);
             }
-
-            lastRenderMode = currentRenderMode;
         }
-
+            
         super.update();
     }
 
@@ -253,40 +180,19 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
             KERNEL PANIC!11 SEGMENTATION FAULT (CORE ISN'T DAMPED)");
         }
 
-        immutable kc.Color[RenderMode.max + 1] renderMode2Color = 
-        [
-            RenderMode.color: renderable.color,
-            RenderMode.temperature: entity.getComponent!Temperature.value.temperature2Color(),
-            RenderMode.sparkle: entity.getComponent!Conductor.state.sparkle2Color(renderable.color)
-        ];
-
         immutable auto position = entity.getComponent!Position();
 
-        if(lastFrameBuffer[position.xy[1]][position.xy[0]] == renderMode2Color[currentRenderMode] 
-         && lastRenderMode == currentRenderMode)
+        if(lastFrameBuffer[position.xy[1]][position.xy[0]] == currentRenderModeConverter(entity)
+            && lastRenderModeConverter == currentRenderModeConverter)
         {
             chunk.state = ChunkState.clean;
             return;
         }
 
         chunk.state = ChunkState.dirty;
-        lastRenderMode = currentRenderMode;
+        lastRenderModeConverter = currentRenderModeConverter;
 
-        lastFrameBuffer[position.xy[1]][position.xy[0]] = renderMode2Color[currentRenderMode];
-        kc.Color color;
-        if(currentRenderMode == RenderMode.temperature)
-        {
-            color = entity.getComponent!Temperature().value.temperature2Color();
-        }
-        else if(currentRenderMode == RenderMode.sparkle)
-        {
-            immutable auto conductor = entity.getComponent!Conductor();
-            color = conductor.state.sparkle2Color(renderable.color);
-        }
-        else
-        {  
-            color = renderable.color;          
-        }
+        kc.Color color = lastFrameBuffer[position.xy[1]][position.xy[0]] = currentRenderModeConverter(entity);
         
         gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite,
             [position.xy[0], position.xy[1]], color);
@@ -363,23 +269,49 @@ public enum RenderMode
 }
 
 
-private class RenderModeSystem : BaseSystem
+public class RenderModeSystem : BaseSystem
 {
+    public static RenderModeSystem instance;
     import powders.input;
+
+    private renderModeConverter[Keys.max + 1] renderModes;
+
+    public this()
+    {
+        instance = this;
+    }
+
+    public void addRenderMode(renderModeConverter converter, Keys selectKey)
+    {
+        renderModes[selectKey] = converter;
+    }
+
+    public renderModeConverter getCurrentRenderModeConverter()
+    {
+        return (cast(RenderableSystem) RenderableSystem.instance).currentRenderModeConverter;
+    }
+
+    public override void onCreated()
+    {
+        addRenderMode(&color2color, Keys.one);
+        (cast(RenderableSystem) RenderableSystem.instance).currentRenderModeConverter = &color2color;
+    }
 
     protected override void update()
     {
-        if(gameWindow.isKeyDown(Keys.one))
+        auto states = gameWindow.getKeyStates();
+        foreach(i, state; states)
         {
-            currentRenderMode = RenderMode.color;
+            if(state && renderModes[i] != renderModeConverter.init)
+            {
+                (cast(RenderableSystem) RenderableSystem.instance).currentRenderModeConverter = renderModes[i];
+            }
         }
-        else if(gameWindow.isKeyDown(Keys.two))
-        {
-            currentRenderMode = RenderMode.temperature;
-        }
-        else if(gameWindow.isKeyDown(Keys.three))
-        {
-            currentRenderMode = RenderMode.sparkle;
-        }
+    }
+
+    private static Color color2color(Entity entity)
+    {
+        MapRenderable renderable = entity.getComponent!MapRenderable();
+        return renderable.color;
     }
 }
