@@ -154,13 +154,13 @@ public struct Entity
 pragma(inline, true):
 
     /// Shortcut for ComponentPool!T.instance.addComponent. See ComponentPool.addComponent
-    public void addComponent(T)(T value)
+    public void addComponent(T)(T value) inout
     {
         ComponentPool!T.instance.addComponent(this, value);
     }    
 
     /// Add a bundle of components. This method adds all fields of T as separated components with default init value
-    public void addBundle(T)()
+    public void addBundle(T)() inout
     {
         import std.traits: Fields;
 
@@ -171,7 +171,7 @@ pragma(inline, true):
     }
 
     /// Remove a bundle of components. This method removes all fields of T as separated components
-    public void removeBundle(T)()
+    public void removeBundle(T)() inout
     {
         import std.traits: Fields;
 
@@ -182,19 +182,19 @@ pragma(inline, true):
     }
 
     /// Shortcut for ComponentPool!T.instance.getComponent. See ComponentPool.getComponent
-    public ref T getComponent(T)()
+    public ref T getComponent(T)() inout
     {
         return ComponentPool!T.instance.getComponent(this);
     }
 
     /// Shortcut for ComponentPool!T.instance.hasComponent. See ComponentPool.hasComponent
-    public bool hasComponent(T)()
+    public bool hasComponent(T)() inout
     {
         return ComponentPool!T.instance.hasComponent(this);
     }
 
     /// Shortcut for ComponentPool!T.instance.removeComponent. See ComponentPool.removeComponent
-    public void removeComponent(T)()
+    public void removeComponent(T)() inout
     {
         return ComponentPool!T.instance.removeComponent(this);
     }
