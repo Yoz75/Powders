@@ -6,8 +6,6 @@ import kc = davincilib.color;
 import kernel.jsonutil;
 import powders.map;
 import powders.particle.register;
-import powders.particle.electricity : Conductor, ConductorState;
-import powders.particle.temperature;
 
 IWindow!(Sprite, Camera) gameWindow;
 
@@ -122,10 +120,6 @@ alias renderModeConverter = kc.Color function(Entity entity);
 
 public final class RenderableSystem : MapEntitySystem!MapRenderable
 {
-    import powders.particle.temperature : Temperature;
-    import powders.particle.electricity : Conductor;
-    import powders.particle.electricity : Conductor;
-
     private renderModeConverter currentRenderModeConverter;
 
     /// A buffer, that contains prefious frame. It's needed to optimize updating.
