@@ -9,7 +9,7 @@ import powders.particle.basics;
 import powders.particle.register;
 import powders.particle.loading;
 import powders.particle.creating;
-import powders.particle.electricity;
+import powders.particle.wireworld;
 import powders.particle.temperature;
 
 /// System, that starts other systems in powders.particle module
@@ -37,9 +37,8 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!TemperatureSystem.create();
         SystemFactory!DeltaTemperatureSystem.create();
 
-        SystemFactory!ConductorSystem.create();
-        SystemFactory!SparkleSystem.create();
-
+        SystemFactory!WWorldConductorSystem.create();
+        SystemFactory!WWorldSparkleSystem.create();
         immutable auto mapResolution = globalMap.resolution;
 
         foreach (i; 0..mapResolution[0])

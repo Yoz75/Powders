@@ -1,4 +1,4 @@
-module powders.particle.electricity;
+module powders.particle.wireworld;
 
 import kernel.ecs;
 import powders.map;
@@ -6,30 +6,36 @@ import powders.rendering;
 import powders.particle.register;
 import powders.io;
 
+/// State of wireworld conductor particle
 public enum ConductorState
 {
+    /// There's no current in conductor
     nothing,
+    /// Head of the current
     head,
+    /// Tail of the current
     tail
 }
 
 /// Marker component for particles that conduct electricity.
-@Component(OnDestroyAction.destroy) public struct Conductor
+@Component(OnDestroyAction.destroy) public struct WWorldConductor
 {
     mixin MakeJsonizable;
 public:
-
-    ConductorState state, nextState;
+    /// Current state of conductor
+    ConductorState state;
+    /// Conductor's state at next frame
+    ConductorState nextState;
 }
 
 /// Just a kostyl for setting `Conductor.state` ConductorState.head
-@Component(OnDestroyAction.destroy) public struct Sparkle
+@Component(OnDestroyAction.destroy) public struct WWorldSparkle
 {
     mixin MakeJsonizable;
 }
 
 /// Wireworld electricity system
-public class ConductorSystem : MapEntitySystem!Conductor
+public class WWorldConductorSystem : MapEntitySystem!WWorldConductor
 {
     /// Action, that calls when particle became charged or uncharged
     public void delegate(Entity entity)[] onUpdatedSparkle;
@@ -42,7 +48,7 @@ public class ConductorSystem : MapEntitySystem!Conductor
         };
 
         assert(RenderModeSystem.instance !is null, "Render mode system is not initialized but we add render mode!!!");
-        RenderModeSystem.instance.addRenderMode(&conductorState2Color, Keys.three);
+        RenderModeSystem.instance.addRenderMode(&wwConductor2Color, Keys.three);
     }
 
     protected override void update()
@@ -51,15 +57,15 @@ public class ConductorSystem : MapEntitySystem!Conductor
 
         foreach(entity; globalMap)
         {
-            if(entity.hasComponent!Conductor)
+            if(entity.hasComponent!WWorldConductor)
             {
-                ref Conductor conductor = entity.getComponent!Conductor();
+                ref WWorldConductor conductor = entity.getComponent!WWorldConductor();
                 conductor.state = conductor.nextState;
             }
         }
     }
 
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Conductor conductor)
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref WWorldConductor conductor)
     {
         if(conductor.state == ConductorState.nothing)
         {
@@ -70,9 +76,9 @@ public class ConductorSystem : MapEntitySystem!Conductor
             {
                 foreach(neighbor; row)
                 {
-                    if(!neighbor.hasComponent!Conductor) continue;
+                    if(!neighbor.hasComponent!WWorldConductor) continue;
 
-                    ref Conductor neighborConductor = neighbor.getComponent!Conductor();
+                    ref WWorldConductor neighborConductor = neighbor.getComponent!WWorldConductor();
 
                     if(neighborConductor.state == ConductorState.head)
                     {
@@ -102,31 +108,31 @@ public class ConductorSystem : MapEntitySystem!Conductor
     }
 }
 
-public class SparkleSystem : MapEntitySystem!Sparkle
+public class WWorldSparkleSystem : MapEntitySystem!WWorldSparkle
 {
     import powders.particle.basics : Particle;
 
     protected override void onAdd(Entity entity)
     {
         isPausable = false;
-        if(!entity.hasComponent!Particle) return;
-        if(!entity.hasComponent!Conductor) return;
+        if(!entity.hasComponent!WWorldConductor) return;
 
-        entity.getComponent!Conductor().state = ConductorState.head;
-        entity.getComponent!Conductor().nextState = ConductorState.head;
+        entity.getComponent!WWorldConductor().state = ConductorState.head;
+        entity.getComponent!WWorldConductor().nextState = ConductorState.head;
     }
 
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Sparkle sparkle)
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref WWorldSparkle sparkle)
     {
         // nothing
     }
 }
 
-public Color conductorState2Color(Entity entity)
+public Color wwConductor2Color(Entity entity)
 {
     import davincilib.color;
 
-    immutable auto conductor = entity.getComponent!Conductor();
+    if(!entity.hasComponent!WWorldConductor) return entity.getComponent!MapRenderable().color;
+    immutable auto conductor = entity.getComponent!WWorldConductor();
 
     final switch(conductor.state)
     {
