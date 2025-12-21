@@ -221,29 +221,82 @@ public Color temperature2Color(Entity entity)
     import kernel.math;
 
     /// Maximal temperature, that rendered as a red color. Temperatures above this value are rendered as hot.
-    enum maxWarmTemperature = 1000.0;
-    enum maxHotTemperature = Temperature.max;
+    enum minColdTemperature = Temperature.min;
+    enum maxWarmTemperature = 100;
+    enum maxVeryWarmTemperature = 1000;
+    enum maxLittleHotTemperature = 2000;
+    enum maxHotTemperature = 3000;
+    enum maxVeryHotTemperature = 4000;
+    enum maxTemperature = Temperature.max;
+
+    enum coldColor = blue;
+    enum zeroColor = black;
+    enum warmColor = green;
+    enum veryWarmColor = red;
+    enum littleHotColor = Color(230, 200, 0);
+    enum hotColor = Color(255, 255, 0);
+    enum veryHotColor = white;
+    enum maxColor = white;
 
     immutable auto temperature = entity.getComponent!Temperature().value;
     Color color;
+    
+    if(temperature < 0)
+    {
+        immutable float normalized = remap!TemperatureScalar(temperature, 0, minColdTemperature, 0, 1);
+        color = lerp(zeroColor, coldColor, normalized);
+    }
+    if(temperature >= 0)
+    {
+        if(temperature < maxWarmTemperature)
+        {
+            immutable float normalized = remap!TemperatureScalar(temperature, 0, maxWarmTemperature, 0, 1);
+            color = lerp(zeroColor, warmColor, normalized);
+        }
+        else if(temperature < maxVeryWarmTemperature)
+        {
+            immutable float normalized =
+                remap!TemperatureScalar(temperature, maxWarmTemperature, maxVeryWarmTemperature, 0, 1);
 
-    immutable ubyte normalizedWarm = 
-    cast(ubyte) remap(temperature, 0, maxWarmTemperature, 0, 255);
+            color = lerp(warmColor, veryWarmColor, normalized);
+        }
+        else if(temperature < maxLittleHotTemperature)
+        {
+            immutable float normalized =
+                remap!TemperatureScalar(temperature, maxVeryWarmTemperature, maxLittleHotTemperature, 0, 1);
 
-    immutable ubyte normalizedHot = 
-    cast(ubyte) remap(temperature, maxWarmTemperature, maxHotTemperature, 200, 255);
+            color = lerp(veryWarmColor, littleHotColor, normalized);
+        }
+        else if(temperature < maxHotTemperature)
+        {
+            immutable float normalized =
+                remap!TemperatureScalar(temperature, maxLittleHotTemperature, maxHotTemperature, 0, 1);
 
-    immutable ubyte normalizedCold = 
-    cast(ubyte) remap(temperature, 0, Temperature.min, 0, 255);
+            color = lerp(littleHotColor, hotColor, normalized);
+        }
+        else if(temperature < maxVeryHotTemperature)
+        {
+            immutable float normalized = 
+                remap!TemperatureScalar(temperature, maxHotTemperature, maxVeryHotTemperature, 0, 1);
 
-    ubyte warmColor = normalizedWarm * cast(ubyte) (temperature > 0 && temperature <= maxWarmTemperature);
-    ubyte hotColor = normalizedHot * cast(ubyte) (temperature > maxWarmTemperature);
-    ubyte coldColor = normalizedCold * cast(ubyte) (temperature < 0);
+            color = lerp(hotColor, veryHotColor, normalized);
+        }
+        else color = maxColor;
+    }
 
-    // If temperature > 0 -- warm colors (or hot if temperature is too big), if 0 -- black, else -- cold colors
-    color.r = cast(ubyte) (warmColor + hotColor);
-    color.g = hotColor;
-    color.b = cast(ubyte) (coldColor + hotColor);
-    color.a = 255;
     return color;
+}
+
+import std.traits : isNumeric;
+
+public pure Color lerp(T)(immutable Color from, immutable Color to, immutable T lerpFactor) if (isNumeric!T)
+{
+    Color result;
+
+    result.r = cast(ubyte)(from.r + (to.r - from.r) * lerpFactor);
+    result.g = cast(ubyte)(from.g + (to.g - from.g) * lerpFactor);
+    result.b = cast(ubyte)(from.b + (to.b - from.b) * lerpFactor);
+    result.a = cast(ubyte)(from.a + (to.a - from.a) * lerpFactor);
+
+    return result;
 }
