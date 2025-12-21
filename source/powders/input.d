@@ -32,9 +32,14 @@ private class MovementSystem : BaseSystem
     public override void onCreated()
     {
         import powders.io;
+        import powders.rendering : gameWindow, Camera;
         enum settingsFileName = "input.json";
 
         loadOrSave!PlayerMovementSettings(getSettingsPath() ~ settingsFileName, settings);
+
+        Camera camera = gameWindow.getCamera();
+        camera.zoom = 0.75;
+        gameWindow.setCamera(camera);
     }
 
     protected override void update()
