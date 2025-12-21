@@ -121,8 +121,8 @@ public struct ComponentPool(T)
             data.length = entity.world.id + 1;
         }
 
-        ref BitArray worldHasTable = entitiesHasTable[entity.world.id];
-        ref T[] worldDataTable = data[entity.world.id];
+        const ref BitArray worldHasTable = entitiesHasTable[entity.world.id];
+        const ref T[] worldDataTable = data[entity.world.id];
 
         if (entity.id >= worldHasTable.length)
         {

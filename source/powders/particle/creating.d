@@ -79,8 +79,6 @@ public class CreateParticleSystem : BaseSystem
     enum float[2] typeButtonsAnchor = [0.93, 0.93];
     enum float[2] typeButtonsMargin = [-0.075, 0];
 
-    private size_t selectedTypeIndex;
-
     private CategoryButton[] categoryButtons;
 
     public override void onCreated()

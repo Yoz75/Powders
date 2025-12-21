@@ -164,8 +164,8 @@ private void updateMousePosition(shared RenderThreadContext* context)
 {
     import raylib;
 
-    auto tempMousePosition = GetMousePosition();
-    auto tempMouseWorldPosition = GetScreenToWorld2D(tempMousePosition, *context.camera);
+    immutable auto tempMousePosition = GetMousePosition();
+    immutable auto tempMouseWorldPosition = GetScreenToWorld2D(tempMousePosition, *context.camera);
 
     context.mousePosition = [tempMousePosition.x, tempMousePosition.y];
     context.mouseWorldPosition = [tempMouseWorldPosition.x, tempMouseWorldPosition.y];

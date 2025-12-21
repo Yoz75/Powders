@@ -153,10 +153,10 @@ public class MovableSystem : MapEntitySystem!Movable
         import std.algorithm : max;
         import std.math : abs;
 
-        int dx = end[0] - start[0];
-        int dy = end[1] - start[1];
+        immutable int dx = end[0] - start[0];
+        immutable int dy = end[1] - start[1];
 
-        int steps = max(abs(dx), abs(dy));
+        immutable int steps = max(abs(dx), abs(dy));
         if (steps == 0)
             return start;
 
@@ -370,7 +370,7 @@ public class CombineSystem : MapEntitySystem!Combine
                 if(!entity.hasComponent!Particle) continue;
                 if(entity == self) continue;
 
-                auto entityId = entity.getComponent!Particle().typeId;
+                immutable auto entityId = entity.getComponent!Particle().typeId;
 
                 if(combine.otherId == entityId)
                 {

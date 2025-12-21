@@ -212,7 +212,7 @@ public struct Map
         {
             foreach (ref entity; row)
             {
-                int result = dg(entity);
+                immutable int result = dg(entity);
                 if(result) return result;
             }
         }

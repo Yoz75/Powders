@@ -54,7 +54,7 @@ public void buildParticle(Entity entity, SerializedParticleType type)
 
 public void destroyParticle(Entity entity)
 {
-    bool hasParticle = entity.hasComponent!Particle();
+    immutable bool hasParticle = entity.hasComponent!Particle();
 
     if(!hasParticle) return;
 

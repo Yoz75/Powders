@@ -129,7 +129,7 @@ string[string] processComponents(string path)
         // Get the name of component's json file from full path
         string componentName = extractFileName(componentEntry.name);
 
-        auto component = componentName in globalComponents;
+        const auto component = componentName in globalComponents;
         if(component is null)
         {
             throw new WrongComponentLoadException("Component " ~ componentName ~ " does not exists!");
