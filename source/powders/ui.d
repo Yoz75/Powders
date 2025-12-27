@@ -116,6 +116,27 @@ public:
     protected abstract void render(int[2] absolutePosition, int[2] absoluteSize);
 }
 
+public class UIText : UIElement
+{
+public:
+    /// The displayed text
+    string text;
+
+    /// Relative font size according to width
+    float relativeFontSize = 0.005;
+    /// The text's color
+    Color color = white;
+
+    protected override void render(int[2] absolutePosition, int[2] absoluteSize)
+    {
+        import kernel.math;
+
+        immutable auto resolution = gameWindow.getWindowResolution();
+        immutable int fontSize = cast(int) remap(relativeFontSize, 0, 1, 0, resolution[0]);
+        gameWindow.drawText(text, absolutePosition, fontSize, color);
+    }
+}
+
 public class UIButton : UIElement
 {
     public void delegate()[] onPressed;

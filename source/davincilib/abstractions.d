@@ -163,10 +163,12 @@ public:
     float[2] getMouseWorldPosition();
 
     /// Get the state of a mouse button
-    /// Returns^ true when down and false otherwise
+    /// Returns: true when down and false otherwise
     bool isMouseButtonDown(immutable MouseButtons button);
 
     bool drawGUIButton(immutable int[2] absoluteScale, immutable int[2] absolutePosition, immutable string text);
+
+    void drawText(immutable string text, immutable int[2] position, immutable int fontSize, immutable dvc.Color color);
 
     /// Create sprite using `TSprite.create` method, that attached to this window
     TSprite createAttachedSprite(immutable int[2] resolution, immutable davincilib.Color color);
