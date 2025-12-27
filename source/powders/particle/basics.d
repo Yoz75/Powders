@@ -195,7 +195,7 @@ public class GravitySystem : MapEntitySystem!Gravity
 
 public class ChangeGravitySystem : BaseSystem
 {
-    protected override void update()
+    protected override void onUpdated()
     {
         import powders.input;
 

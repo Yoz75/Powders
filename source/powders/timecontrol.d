@@ -16,7 +16,7 @@ public class TimeControlSystem : BaseSystem
 {
     /// Should we process 1 frame of the game or not?
     private bool shouldUpdate1Frame;
-    public override void update()
+    public override void onUpdated()
     {
         if(shouldUpdate1Frame && globalGameState == globalGameState.play)
         {

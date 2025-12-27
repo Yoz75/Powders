@@ -51,9 +51,9 @@ public class WWorldConductorSystem : MapEntitySystem!WWorldConductor
         RenderModeSystem.instance.addRenderMode(&wwConductor2Color, Keys.three);
     }
 
-    protected override void update()
+    protected override void onUpdated()
     {
-        super.update();
+        super.onUpdated();
 
         foreach(entity; globalMap)
         {

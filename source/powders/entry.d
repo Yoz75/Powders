@@ -24,9 +24,9 @@ private class ExitSystem : BaseSystem
 {
     import core.stdc.stdlib : exit;
 
-    protected override void update()
+    protected override void onUpdated()
     {
-        if(gameWindow.shouldCloseWindow) exit(0);
+        if(gameWindow.shouldCloseWindow) exit(100);
     }
 }
 
@@ -40,9 +40,8 @@ public void powdersMain()
     programVersion = Version.fromString(import("appVersion.txt"));
 
     World gameWorld = World.create();
-
     gameWindow = new Window();
-    gameWindow.initWindow([1200, 900], true, "powders!");
+    gameWindow.initWindow([1200, 900], false, "powders!");
     gameWindow.setTargetFPS(240);
 
     Simulation.run!(CreateMapSystem, InitialRenderSystem, InitialInputSystem,

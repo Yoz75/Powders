@@ -42,7 +42,7 @@ private class MovementSystem : BaseSystem
         gameWindow.setCamera(camera);
     }
 
-    protected override void update()
+    protected override void onUpdated()
     {
         import powders.rendering;
 

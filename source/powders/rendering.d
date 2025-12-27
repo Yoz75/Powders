@@ -32,13 +32,13 @@ public final class InitialRenderSystem : BaseSystem
 
 private final class InitRendererSystem : BaseSystem
 {
-    protected override void beforeUpdate()
+    protected override void onBeforeUpdate()
     {
         gameWindow.startFrame();
         gameWindow.clearScreen();
     }
 
-    protected override void afterUpdate()
+    protected override void onAfterUpdate()
     {
         gameWindow.endFrame();
     }
@@ -108,7 +108,7 @@ private final class MapRenderSystem : BaseSystem
         }
     }
 
-    protected override void update()
+    protected override void onBeforeUpdate()
     {
         gameWindow.applySpriteChanges(cast (immutable Sprite) mapSprite);
         gameWindow.renderAtWorldPos([0, 0], cast (immutable Sprite) mapSprite);
@@ -142,7 +142,7 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
         markDirty(entity);
     }
 
-    protected override void update()
+    protected override void onAfterUpdate()
     {
         if(lastRenderModeConverter != currentRenderModeConverter)
         {
@@ -162,7 +162,7 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
             }
         }
             
-        super.update();
+        super.onUpdated();
     }
 
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref MapRenderable renderable)
@@ -291,7 +291,7 @@ public class RenderModeSystem : BaseSystem
         (cast(RenderableSystem) RenderableSystem.instance).currentRenderModeConverter = &color2color;
     }
 
-    protected override void update()
+    protected override void onUpdated()
     {
         auto states = gameWindow.getKeyStates();
         foreach(i, state; states)

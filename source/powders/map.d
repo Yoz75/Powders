@@ -75,7 +75,7 @@ public abstract class MapEntitySystem(T) : System!T
         chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
     }
 
-    public override void update()
+    public override void onUpdated()
     {
         if(globalGameState == GameState.pause && isPausable)
         {

@@ -115,7 +115,7 @@ public class CreateParticleSystem : BaseSystem
         selectedCategoryButton.enable;
     }
 
-    protected override void update()
+    protected override void onUpdated()
     {
         mixin TODO!("ADD MOUSE FUNCTIONS TO INPUT AND USE ENUM!");
 

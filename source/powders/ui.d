@@ -159,7 +159,7 @@ public class UIButton : UIElement
 
 public class UpdateUISystem : BaseSystem
 {
-    protected override void update()
+    protected override void onUpdated()
     {
         foreach (element; allElements)
         {

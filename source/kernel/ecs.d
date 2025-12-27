@@ -225,7 +225,12 @@ public abstract class BaseSystem
     protected World currentWorld;
 
     /// Update system for each component
-    public void update()
+    public final void update()
+    {
+        onUpdated();
+    }
+
+    protected void onUpdated()
     {
         //nothing here
     }
@@ -245,12 +250,24 @@ public abstract class BaseSystem
         //nothing here
     }
 
-    public void beforeUpdate()
+    /// Method, that called before any update in this frame
+    public final void beforeUpdate()
+    {
+        onBeforeUpdate();
+    }
+
+    protected void onBeforeUpdate()
     {
         //nothing here
     }
 
-    public void afterUpdate()
+    /// Method, that called after all updates in this frame
+    public final void afterUpdate()
+    {
+        onAfterUpdate();
+    }
+
+    protected void onAfterUpdate()
     {
         //nothing here
     }

@@ -49,7 +49,7 @@ public final class ParticleInfoSystem : BaseSystem
         infoCollectors ~= collector;
     }
 
-    public override void update()
+    public override void onUpdated()
     {
         import std.array;
 
