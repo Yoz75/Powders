@@ -38,8 +38,8 @@ private class ProfileSystem : BaseSystem
     import std.stdio : writeln;
     import std.typecons : Tuple, tuple;
 
-    private enum profileFrames = 10_000;
-    private enum profileLogInterval = 100;
+    private enum profileFrames = 500;
+    private enum profileLogInterval = 50;
 
     private int frameCounter;
     Duration[BaseSystem] totalTimes;
