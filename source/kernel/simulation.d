@@ -2,6 +2,9 @@
 module kernel.simulation;
 
 import kernel.ecs;
+import std.datetime : Duration;
+
+public alias onProfile = void delegate(BaseSystem system, Duration time);
 
 public final abstract class Simulation
 {
@@ -14,7 +17,12 @@ public final abstract class Simulation
     }
 
     public static World currentWorld;
+
+    /// Is game being profiled right now?
+    public static bool isProfiling;
+    
     private static State state = State.none;
+    private static onProfile[] onBeforeUpdateProfile, onUpdateProfile, onAfterUpdateProfile;
 
     /// Run the simulation with T... as start systems
     /// Params:
@@ -52,35 +60,104 @@ public final abstract class Simulation
         }
 
         if(state == State.restart) goto LStart;
+
         // Maybe I'll add more states, so this shit is done to avoid potential bugs
         else if(state == State.stop) return;
     }
 
-    public void restart()
+    public void addOnBeforeUpdateProfile(onProfile profile)
+    {
+        onBeforeUpdateProfile ~= profile;
+    }
+
+    public static void addOnUpdateProfile(onProfile profile)
+    {
+        onUpdateProfile ~= profile;
+    }
+
+    public static void addOnAfterUpdateProfile(onProfile profile)
+    {
+        onAfterUpdateProfile ~= profile;
+    }
+
+    public static void restart()
     {
         state = State.restart;
     }
 
-    public void stop()
+    public static void stop()
     {
         state = State.stop;
     }
 
     private static void update()
     {
-        foreach(system; systems)
-        {
-            system.beforeUpdate();
-        }
+        import std.datetime.stopwatch;
 
-        foreach(system; systems)
+        if(isProfiling)
         {
-            system.update();
+            StopWatch sw = StopWatch(AutoStart.no);
+
+            foreach(system; systems)
+            {
+                sw.start();
+                system.beforeUpdate();
+                sw.stop();
+
+                foreach(action; onBeforeUpdateProfile)
+                {
+                    action(system, sw.peek());
+                }
+
+                sw.reset();
+            }
+
+
+            foreach(system; systems)
+            {
+                sw.start();
+                system.update();
+                sw.stop();
+
+                foreach(action; onUpdateProfile)
+                {
+                    action(system, sw.peek());
+                }
+
+                sw.reset();
+            }
+
+            
+            foreach(system; systems)
+            {
+                sw.start();
+                system.afterUpdate();
+                sw.stop();
+
+                foreach(action; onAfterUpdateProfile)
+                {
+                    action(system, sw.peek());
+                }
+
+                sw.reset();
+            }
         }
-        
-        foreach(system; systems)
+        else
         {
-            system.afterUpdate();
+            foreach(system; systems)
+            {
+                system.beforeUpdate();
+            }
+
+            foreach(system; systems)
+            {
+                system.update();
+            }
+            
+            foreach(system; systems)
+            {
+                system.afterUpdate();
+            }
         }
     }
 }

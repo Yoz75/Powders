@@ -30,6 +30,77 @@ private class ExitSystem : BaseSystem
     }
 }
 
+private class ProfileSystem : BaseSystem
+{
+    import std.datetime : Duration;
+    import std.algorithm;
+    import std.array : array;
+    import std.stdio : writeln;
+    import std.typecons : Tuple, tuple;
+
+    private enum profileFrames = 10_000;
+    private enum profileLogInterval = 100;
+
+    private int frameCounter;
+    Duration[BaseSystem] totalTimes;
+
+    public override void onCreated()
+    {
+        Simulation.addOnUpdateProfile(&onUpdateProfile);
+    }
+
+    protected override void onUpdated()
+    {
+        if (gameWindow.isKeyDown(Keys.p))
+        {
+            Simulation.isProfiling = !Simulation.isProfiling;
+        }
+
+        if (!Simulation.isProfiling)
+            return;
+
+        frameCounter++;
+
+        if (frameCounter % profileLogInterval == 0)
+        {
+            writeln("Profiled ", frameCounter, " frames");
+        }
+
+        if (frameCounter >= profileFrames)
+        {
+            auto entries = totalTimes
+                .byKeyValue
+                .map!(kv => tuple(kv.key, kv.value))
+                .array;
+
+            entries.sort!((a, b) => a[1] > b[1]);
+
+            writeln("-------------------------------------------------------------");
+            foreach (entry; entries)
+            {
+                writeln("System: ", entry[0], ". Average time: ", entry[1] / profileFrames);
+            }
+            writeln("-------------------------------------------------------------");
+
+            frameCounter = 0;
+            totalTimes.clear;
+
+            Simulation.isProfiling = false;
+        }
+    }
+
+    private void onUpdateProfile(BaseSystem system, Duration time)
+    {
+        if((system in totalTimes) is null)
+        {
+            totalTimes[system] = Duration.init;
+        }
+
+        totalTimes[system] += time;
+    }
+}
+
+
 /// Entry point for powders
 public void powdersMain()
 {
@@ -45,7 +116,7 @@ public void powdersMain()
     gameWindow.setTargetFPS(240);
 
     Simulation.run!(CreateMapSystem, InitialRenderSystem, InitialInputSystem,
-     InitialParticlesSystem, InitialUISystem, ExitSystem, TimeControlSystem, InitialStatisticsSystem)
+     InitialParticlesSystem, InitialUISystem, ExitSystem, TimeControlSystem, InitialStatisticsSystem, ProfileSystem)
     (gameWorld, toDelegate(&beforeUpdate), toDelegate(&afterUpdate));
 
     import core.stdc.stdlib : exit;
