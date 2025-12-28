@@ -20,14 +20,36 @@ public abstract class MapEntitySystem(T) : System!T
     public enum ChunkState
     {
         dirty,
+        becomeDirty,
         clean
     }
 
     public struct Chunk
     {
     public:
-        ChunkState state = ChunkState.dirty;
-        Entity[][] data;
+        private ChunkState state = ChunkState.dirty;
+        private Entity[][] data;
+
+        void makeDirty()
+        {
+            state = ChunkState.becomeDirty;
+        }
+
+        void makeClean()
+        {
+            if(state == ChunkState.becomeDirty) return;
+            state = ChunkState.clean;
+        }
+
+        pure bool isDirty() inout
+        {
+            return state != ChunkState.clean;
+        }
+
+        pure bool isClean() inout
+        {
+            return state == ChunkState.clean;
+        }
 
         /// Convert world position to chunk index in table
         /// Params:
@@ -75,24 +97,6 @@ public abstract class MapEntitySystem(T) : System!T
         globalMap.onFinalizeTick ~= &swapChunks;
     }
 
-    /// Make the chunk containing the `position` dirty
-    /// Params:
-    ///   position = the position of entity, that made the chunk dirty
-    public void makeChunkDirty(int[2] position)
-    {
-        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
-        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
-    }
-
-    /// Make the chunk containing the `position` clean
-    /// Params:
-    ///   position = the position of entity, that made the chunk clean
-    public void makeChunkClean(int[2] position)
-    {
-        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
-        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.clean;
-    }
-
     public override void onUpdated()
     {
         if(globalGameState == GameState.pause && isPausable)
@@ -105,6 +109,10 @@ public abstract class MapEntitySystem(T) : System!T
             foreach(i, ref chunk; row)
             {
                 if(chunk.state == ChunkState.clean) continue;
+                else if(chunk.state == ChunkState.becomeDirty)
+                {
+                    chunk.state = ChunkState.dirty;
+                }                
 
                 if(useBeforeUpdate)
                 {
@@ -159,7 +167,17 @@ public abstract class MapEntitySystem(T) : System!T
         immutable int[2] position = entity.getComponent!Position().xy;
         immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
 
-        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
+        chunks[chunkIndex[1]][chunkIndex[0]].makeDirty();
+    }
+
+    /// Mark the chunk of `entity` as clean
+    /// Params:
+    ///   entity = the entity, made chunk clean
+    public void markClean(Entity entity)
+    {
+        immutable int[2] position = entity.getComponent!Position().xy;
+        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
+        chunks[chunkIndex[1]][chunkIndex[0]].makeClean();
     }
 
     /// Method, that's being called before updating component. Default implementation disables self updating

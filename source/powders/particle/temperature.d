@@ -164,12 +164,12 @@ public class TemperatureSystem : MapEntitySystem!Temperature
 
         if(!wasAnyTransfer)
         {
-            chunk.state = ChunkState.clean;
+            chunk.makeClean();
             return;
         }
         else
         {            
-            chunk.state = ChunkState.dirty;
+            chunk.makeDirty();
 
             // We return here, but not at start because now program can mark unchanged chunks as clean
             if(!entity.hasComponent!Particle) return; 
@@ -182,7 +182,7 @@ public class TemperatureSystem : MapEntitySystem!Temperature
                 neighborPosition[1] = neighborPosition[1] - cast(int)(neighborPosition[1] >= mapResolution[1]);
 
                 neighborChunkIndex = Chunk.world2ChunkIndex(neighborPosition);
-                chunks[neighborChunkIndex[1]][neighborChunkIndex[0]].state = ChunkState.dirty;
+                chunks[neighborChunkIndex[1]][neighborChunkIndex[0]].makeDirty();
             }            
 
             foreach(action; onTemperatureChanged)

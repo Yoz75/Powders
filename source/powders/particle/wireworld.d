@@ -51,18 +51,17 @@ public class WWorldConductorSystem : MapEntitySystem!WWorldConductor
         RenderModeSystem.instance.addRenderMode(&wwConductor2Color, Keys.three);
     }
 
-    protected override void onUpdated()
+    protected override void afterUpdateComponent(Entity entity, ref Chunk chunk, ref WWorldConductor conductor)
     {
-        super.onUpdated();
-
-        foreach(entity; globalMap)
+        if(conductor.nextState != conductor.state)
         {
-            if(entity.hasComponent!WWorldConductor)
-            {
-                ref WWorldConductor conductor = entity.getComponent!WWorldConductor();
-                conductor.state = conductor.nextState;
-            }
+            chunk.makeDirty();
         }
+        else 
+        {
+            chunk.makeClean();
+        }
+        conductor.state = conductor.nextState;
     }
 
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref WWorldConductor conductor)

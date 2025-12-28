@@ -231,7 +231,7 @@ public class PowderSystem : MapEntitySystem!Powder
         immutable int[2] position = entity.getComponent!Position().xy;
         immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
 
-        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
+        chunks[chunkIndex[1]][chunkIndex[0]].makeDirty();
     }
 
     protected override void onAdd(Entity entity)
@@ -241,9 +241,7 @@ public class PowderSystem : MapEntitySystem!Powder
 
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Powder powder)
     {
-        /*ТУДУ: починить чанки (обновляются только если частица создана в чанке, а если упала туда -- нет)
-        тут и ещё в адгезии*/
-        chunk.state = ChunkState.clean;
+        chunk.makeClean();
         if(!entity.hasComponent!Movable())
         {
             throw new Exception("Powder component can be only on Movable particles!");
@@ -260,7 +258,7 @@ public class PowderSystem : MapEntitySystem!Powder
 
         if(entity.getComponent!Movable().isFalling) return;
 
-        chunk.state = ChunkState.dirty;
+        chunk.makeDirty();
 
         /*
                -1 0 1
@@ -290,7 +288,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
         immutable int[2] position = entity.getComponent!Position().xy;
         immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
 
-        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
+        chunks[chunkIndex[1]][chunkIndex[0]].makeDirty();
     }
 
 
@@ -301,7 +299,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
 
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Adhesion adhesion)
     {
-        chunk.state = ChunkState.clean;
+        chunk.makeClean();
         if(!entity.hasComponent!Movable())
         {
             throw new Exception("Adhesion component can be only on Movable particles!");
@@ -318,7 +316,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
 
         if(entity.getComponent!Movable().isFalling) return;        
 
-        chunk.state = ChunkState.dirty;
+        chunk.makeDirty();
         /*
                -1 0 1
             -1 [][][]

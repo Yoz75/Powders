@@ -150,7 +150,7 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
             {
                 foreach(ref chunk_; row)
                 {
-                    chunk_.state = ChunkState.dirty;
+                    chunk_.makeDirty();
                 }
             }
 
@@ -179,11 +179,11 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
         if(lastFrameBuffer[position.xy[1]][position.xy[0]] == currentRenderModeConverter(entity)
             && lastRenderModeConverter == currentRenderModeConverter)
         {
-            chunk.state = ChunkState.clean;
+            chunk.makeClean();
             return;
         }
 
-        chunk.state = ChunkState.dirty;
+        chunk.makeDirty();
         lastRenderModeConverter = currentRenderModeConverter;
 
         kc.Color color = lastFrameBuffer[position.xy[1]][position.xy[0]] = currentRenderModeConverter(entity);
