@@ -54,6 +54,15 @@ public abstract class MapEntitySystem(T) : System!T
     private Chunk[][] tempChunks;
     protected bool isPausable = true;
 
+    /// Call before update or not? Enable this only if you REALLY need it.
+    protected bool useBeforeUpdate = false;
+
+    /// Call update or not? Enable this only if you REALLY need it.
+    protected bool useUpdate = true;
+
+    /// Call after update or not? Enable this only if you REALLY need it.
+    protected bool useAfterUpdate = false;
+
     public this()
     {
         super();
@@ -75,6 +84,15 @@ public abstract class MapEntitySystem(T) : System!T
         chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
     }
 
+    /// Make the chunk containing the `position` clean
+    /// Params:
+    ///   position = the position of entity, that made the chunk clean
+    public void makeChunkClean(int[2] position)
+    {
+        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
+        chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.clean;
+    }
+
     public override void onUpdated()
     {
         if(globalGameState == GameState.pause && isPausable)
@@ -88,14 +106,45 @@ public abstract class MapEntitySystem(T) : System!T
             {
                 if(chunk.state == ChunkState.clean) continue;
 
-                foreach(y, chunkRow; chunk.data)
+                if(useBeforeUpdate)
                 {
-                    foreach(x, entity; chunkRow)
+                    foreach(y, chunkRow; chunk.data)
                     {
-                        if(!entity.hasComponent!T()) continue;
+                        foreach(x, entity; chunkRow)
+                        {
+                            if(!entity.hasComponent!T()) continue;
 
-                        ref T component = entity.getComponent!T();
-                        updateComponent(entity, chunk, component);
+                            ref T component = entity.getComponent!T();
+                            beforeUpdateComponent(entity, chunk, component);
+                        }
+                    }
+                }
+
+                if(useUpdate)
+                {
+                    foreach(y, chunkRow; chunk.data)
+                    {
+                        foreach(x, entity; chunkRow)
+                        {
+                            if(!entity.hasComponent!T()) continue;
+
+                            ref T component = entity.getComponent!T();
+                            updateComponent(entity, chunk, component);
+                        }
+                    }
+                }
+
+                if(useAfterUpdate)
+                {
+                    foreach(y, chunkRow; chunk.data)
+                    {
+                        foreach(x, entity; chunkRow)
+                        {
+                            if(!entity.hasComponent!T()) continue;
+
+                            ref T component = entity.getComponent!T();
+                            afterUpdateComponent(entity, chunk, component);
+                        }
                     }
                 }
             }
@@ -113,8 +162,23 @@ public abstract class MapEntitySystem(T) : System!T
         chunks[chunkIndex[1]][chunkIndex[0]].state = ChunkState.dirty;
     }
 
+    /// Method, that's being called before updating component. Default implementation disables self updating
+    protected void beforeUpdateComponent(Entity entity, ref Chunk chunk, ref T component) 
+    {
+        useBeforeUpdate = false;
+    }
 
-    protected abstract void updateComponent(Entity entity, ref Chunk chunk, ref T component);
+    /// Method, that's being called on updating component. Default implementation disables self updating
+    protected void updateComponent(Entity entity, ref Chunk chunk, ref T component)
+    {
+        useUpdate = false;
+    }
+
+    /// Method, that's being called after updating component. Default implementation disables self updating
+    protected void afterUpdateComponent(Entity entity, ref Chunk chunk, ref T component) 
+    {
+        useAfterUpdate = false;
+    }
 
     private void swapChunks()
     {

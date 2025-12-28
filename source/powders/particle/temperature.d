@@ -208,11 +208,6 @@ public class DeltaTemperatureSystem : MapEntitySystem!DeltaTemperature
 
         (cast(TemperatureSystem) TemperatureSystem.instance).markDirty(entity);
     }
-
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref DeltaTemperature)
-    {
-        //nothing;
-    }
 }
 
 import davincilib.color;

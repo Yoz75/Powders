@@ -120,11 +120,6 @@ public class WWorldSparkleSystem : MapEntitySystem!WWorldSparkle
         entity.getComponent!WWorldConductor().state = ConductorState.head;
         entity.getComponent!WWorldConductor().nextState = ConductorState.head;
     }
-
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref WWorldSparkle sparkle)
-    {
-        // nothing
-    }
 }
 
 public Color wwConductor2Color(Entity entity)
