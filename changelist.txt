@@ -25,3 +25,16 @@
 * Separated Powder and Adhesion (new powder, not powder that became movable)
 * Added copper 
 * And last one -- updated this list \(0o0)/!!!
+
+0.4.0:
+* Fixed particle spawning
+* Added parallel flag for potentially faster compilation
+* Added pause on space and frame-stap on F key
+* Systems can be protected from pause with isPausable field!
+* MADE RENDERING BLAZINGLY FAST AND SEPARATED RENDER THREAD \^-^/
+* Added electricity in form of wire world!
+* Added wire world render mode on key 3
+* Refactored temperature render mode
+* Added particle statistics in up right corner!
+* Added profiling on P key!
+* Improved perfomance!!!
