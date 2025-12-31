@@ -37,7 +37,6 @@ public:
 
     /// How fast particle changes it's temperature.
     TemperatureScalar transferCoefficient = 0.1;
-    TemperatureScalar transferCoefficient = 0.01;
 
     /// Temperature of a particle in degrees Celsius
     TemperatureScalar value = defaultTemperature; 
@@ -191,15 +190,12 @@ private void processHeat(shared TemperatureThreadContext* context)
                     immutable auto neighborDelta = ((resultTemperature - neighborTemperature.value) *
                         neighborTemperature.transferCoefficient).quantize(Temperature.threshold);
 
-                    context.inputBuffer[y][x].value.atomicOp!"+="(selfDelta);
-                    context.inputBuffer[neighborPosition[1]][neighborPosition[0]].value.atomicOp!"+="(neighborDelta);
+                    temperature.value.atomicOp!"+="(selfDelta);
+                    neighborTemperature.value.atomicOp!"+="(neighborDelta);
 
-                    context.inputBuffer[y][x].value = 
-                        context.inputBuffer[y][x].value.clamp(Temperature.min, Temperature.max);
+                    temperature.value.clamp(Temperature.min, Temperature.max);
 
-                    context.inputBuffer[neighborPosition[1]][neighborPosition[0]].value = 
-                        context.inputBuffer[neighborPosition[1]][neighborPosition[0]].value
-                        .clamp(Temperature.min, Temperature.max);
+                    neighborTemperature.value = neighborTemperature.value.clamp(Temperature.min, Temperature.max);
                 }
             }
         }
