@@ -16,7 +16,7 @@ alias TemperatureScalar = double;
 
 public:
     /// The least fractional part of temperature
-    enum TemperatureScalar threshold = 0.01;
+    enum TemperatureScalar threshold = 0.001;
 
     enum TemperatureScalar min = -273.15;
     enum TemperatureScalar max = 100_000;
