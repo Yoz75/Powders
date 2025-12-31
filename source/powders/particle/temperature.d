@@ -5,6 +5,7 @@ import powders.io;
 import powders.particle.register;
 import powders.particle.basics;
 import powders.map;
+import std.concurrency;
 
 // Number type used for heat and temperature
 alias TemperatureScalar = double;
@@ -35,7 +36,7 @@ public:
     TemperatureScalar heatCapacity = airHeatCapacity;
 
     /// How fast particle changes it's temperature.
-    TemperatureScalar transferCoefficient = 1;
+    TemperatureScalar transferCoefficient = 0.1;
 
     /// Temperature of a particle in degrees Celsius
     TemperatureScalar value = defaultTemperature; 
@@ -63,34 +64,167 @@ public:
     @JsonizeField TemperatureScalar delta;
 }
 
+private enum TemperatureThreadMessageType
+{
+    pause,
+    unpause,
+    setTemperature
+}
+
+private struct TemperatureThreadMessage
+{
+    TemperatureThreadMessageType type;
+
+    Temperature cell;
+    int[2] position;
+}
+
+private struct TemperatureThreadContext
+{
+public:
+    /// Input buffer with temperatures to read from
+    Temperature[][] inputBuffer;
+
+    /// Output buffer with temperatures to write to
+    Temperature[][] outputBuffer;
+
+    /// Should pause temperature thread or not?
+    bool isPaused;
+}
+
+private void temperatureThread(shared TemperatureThreadContext* context)
+{
+    void processMessage(TemperatureThreadMessage msg)
+    {
+        import std.stdio;
+        final switch(msg.type)
+        {
+            case TemperatureThreadMessageType.pause:
+                context.isPaused = true;
+                break;
+
+            case TemperatureThreadMessageType.unpause:
+                context.isPaused = false;
+                break;
+
+            // We are outside of computing loop so can safely change input buffer
+            case TemperatureThreadMessageType.setTemperature:
+                context.inputBuffer[msg.position[0]][msg.position[1]] = msg.cell;
+                context.outputBuffer[msg.position[0]][msg.position[1]] = msg.cell;
+                break;
+        }
+    }
+
+    try
+    {
+        while(true)
+        {
+            import std.datetime : msecs;
+
+            receiveTimeout(0.msecs, &processMessage);
+            if(context.isPaused) continue;
+            processHeat(context);
+
+
+            shared Temperature[][] temp;
+
+            temp = context.inputBuffer;
+            context.inputBuffer = context.outputBuffer;
+            context.outputBuffer = temp;          
+        }
+    }
+    catch(Throwable ex)
+    {
+        import std.stdio;
+        import core.stdc.stdlib;
+        
+        writeln("FATAL TEMPERATURE THREAD ERROR!", ex.msg);
+        exit(-3);
+    }
+}
+
+private void processHeat(shared TemperatureThreadContext* context)
+{
+    assert(context.inputBuffer.length == context.outputBuffer.length && context.outputBuffer.length,
+        "Input, temp, and output temperature buffers must have the same resolution!");
+    import std.math;
+    import core.atomic;
+
+    foreach(y, ref row; context.inputBuffer)
+    {
+        foreach(x, ref temperature; row)
+        {        
+            for(int neighborY = -1; neighborY <= 1;  neighborY++)
+            {
+                for(int neighborX = -1; neighborX <= 1; neighborX++)
+                {
+                    if(neighborX == 0 && neighborY == 0) continue;
+                    
+                    auto neighborPosition = [x + neighborX, y + neighborY];
+                    if(neighborPosition[0] < 0)
+                    {
+                        neighborPosition[0] = context.outputBuffer[0].length - 1;
+                    }
+                    if(neighborPosition[1] < 0)
+                    {
+                        neighborPosition[1] = context.outputBuffer.length - 1;
+                    }
+
+                    neighborPosition[0] %= context.outputBuffer[0].length;
+                    neighborPosition[1] %= context.outputBuffer.length;
+
+                    ref shared Temperature neighborTemperature =
+                     context.inputBuffer[neighborPosition[1]][neighborPosition[0]];
+
+                    if(neighborTemperature.value == temperature.value) continue;
+                    //if((cast(double)neighborTemperature.value).isClose(cast(double)temperature.value)) continue;
+
+                    immutable auto resultTemperature = (temperature.heatCapacity * temperature.value + 
+                    neighborTemperature.heatCapacity * neighborTemperature.value) / 
+                    (temperature.heatCapacity + neighborTemperature.heatCapacity);
+
+                    immutable auto selfDelta = ((resultTemperature - temperature.value) *
+                        temperature.transferCoefficient).quantize(Temperature.threshold);
+
+                    immutable auto neighborDelta = ((resultTemperature - neighborTemperature.value) *
+                        neighborTemperature.transferCoefficient).quantize(Temperature.threshold);
+
+                    context.inputBuffer[y][x].value.atomicOp!"+="(selfDelta);
+                    context.inputBuffer[neighborPosition[1]][neighborPosition[0]].value.atomicOp!"+="(neighborDelta);
+                }
+            }
+        }
+    }
+}
 
 import kernel.todo;
 mixin TODO!("Currently TemperatureSystem is broken when process ambient heat, fix later!");
-public class TemperatureSystem : MapEntitySystem!Temperature
+public class TemperatureSystem : System!Temperature
 {
+    import core.thread;
+
+    private Tid threadId;
+    private shared TemperatureThreadContext* context;
+
     public void delegate(Entity entity)[] onTemperatureChanged;
-
-    /// Cache for temperature components because getComponent is slow
-    private Temperature*[] temperatureCache;
-    private Position*[] positionCache;
-
     private int[2] mapResolution;
 
-    /// Mark that entity was updated and it's chunk must be recomputed
+    public void setTemperature(int[2] position, TemperatureScalar newTemperature)
+    {
+        TemperatureThreadMessage message;
+        message.type = TemperatureThreadMessageType.setTemperature;
 
+        Temperature temp = context.inputBuffer[position[1]][position[0]];
+        temp.value = newTemperature;
+        
+        message.cell = temp;
+        message.position = position;
+        threadId.send(message);
+    }
+    
     public override void onCreated()
     {
         mapResolution = globalMap.resolution();
-
-        ComponentPool!Temperature.instance.reserve(currentWorld, mapResolution[0] * mapResolution[1]);
-        temperatureCache.reserve(mapResolution[0] * mapResolution[1]);
-        positionCache.reserve(mapResolution[0] * mapResolution[1]);
-
-        foreach(entity; globalMap)
-        {
-            temperatureCache ~= &entity.getComponent!Temperature();
-            positionCache ~= &entity.getComponent!Position();
-        }
 
         import powders.rendering;
         onTemperatureChanged ~= (Entity self) 
@@ -101,112 +235,64 @@ public class TemperatureSystem : MapEntitySystem!Temperature
 
         assert(RenderModeSystem.instance !is null, "Render mode system is not initialized but we add render mode!!!");
         RenderModeSystem.instance.addRenderMode(&temperature2Color, Keys.two);
-    }
 
-    protected override void onAdd(Entity entity)
-    {
-        markDirty(entity);
-    }
+        context = new shared TemperatureThreadContext;
 
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Temperature temperature)
-    {
-        import std.math;
-        import std.algorithm.comparison : clamp;
-        import std.traits : EnumMembers;
+        context.inputBuffer = new shared Temperature[][](mapResolution[1], mapResolution[0]);
+        context.outputBuffer = new shared Temperature[][](mapResolution[1], mapResolution[0]);
 
-        enum NeighborBiases : int[2]
+        for(int y = 0; y < mapResolution[1]; y++)
         {
-            topLeft = [-1, 1],
-            top = [0, 1],
-            topRight = [1, 1],
-            left = [-1, 0],
-            right = [1, 0],
-            bottomLeft = [-1, -1],
-            bottom = [0, -1],
-            bottomRight = [1, -1],
-            self = [0, 0]
-        }
-        
-        int[2] selfPosition = positionCache[entity.id].xy;
-        int[2] neighborPosition;
-        int[2] neighborChunkIndex;
-        Entity neighborEntity;
-
-        bool isValidNeighbor, wasAnyTransfer;
-        Temperature* neighborTemperature;
-        TemperatureScalar resultTemperature = 0, selfDelta = 0, neighborDelta = 0;
-
-        immutable bool isValidParticle = entity.hasComponent!Particle;
-        
-        static foreach(bias; EnumMembers!NeighborBiases)
-        {
-            neighborPosition[] = selfPosition[] + bias[];
-            neighborEntity = globalMap.getAt(neighborPosition);
-            neighborTemperature = &neighborEntity.getComponent!Temperature();
-    
-            isValidNeighbor = neighborEntity.hasComponent!Particle();
-
-            wasAnyTransfer |= isValidNeighbor & (temperature.value != neighborTemperature.value);
-
-            resultTemperature = (temperature.heatCapacity * temperature.value + 
-            neighborTemperature.heatCapacity * neighborTemperature.value) / 
-            (temperature.heatCapacity + neighborTemperature.heatCapacity);
-
-            selfDelta = (resultTemperature - temperature.value) * temperature.transferCoefficient;
-            neighborDelta = (resultTemperature - neighborTemperature.value) * neighborTemperature.transferCoefficient;
-
-            selfDelta = selfDelta.quantize(Temperature.threshold);
-            neighborDelta = neighborDelta.quantize(Temperature.threshold);
-
-            temperature.value += isValidNeighbor & isValidParticle ? selfDelta : 0;
-            neighborTemperature.value += isValidNeighbor & isValidParticle ? neighborDelta : 0;
-        }
-
-        if(!wasAnyTransfer)
-        {
-            chunk.makeClean();
-            return;
-        }
-        else
-        {            
-            chunk.makeDirty();
-
-            // We return here, but not at start because now program can mark unchanged chunks as clean
-            if(!entity.hasComponent!Particle) return; 
-
-            static foreach(bias; EnumMembers!NeighborBiases)
+            for(int x = 0; x < mapResolution[0]; x++)
             {
-                neighborPosition[] = selfPosition[] + bias[];
-
-                neighborPosition[0] = neighborPosition[0] - cast(int)(neighborPosition[0] >= mapResolution[0]);
-                neighborPosition[1] = neighborPosition[1] - cast(int)(neighborPosition[1] >= mapResolution[1]);
-
-                neighborChunkIndex = Chunk.world2ChunkIndex(neighborPosition);
-                chunks[neighborChunkIndex[1]][neighborChunkIndex[0]].makeDirty();
-            }            
-
-            foreach(action; onTemperatureChanged)
-            {
-                action(entity);
+                context.inputBuffer[y][x] = globalMap.getAt([x, y]).getComponent!Temperature();
             }
         }
+
+        threadId = spawn(&temperatureThread, context);
+    }
+
+    protected override void onUpdated()
+    {    
+        import powders.timecontrol;
+        if(globalGameState != GameState.play)
+        {
+            context.isPaused = true;
+            return;
+        }
+        else context.isPaused = false;
         
-        temperature.value = temperature.value.quantize(Temperature.threshold);
-        temperature.value = temperature.value.clamp(Temperature.min, Temperature.max);
+        foreach(x, y, entity; globalMap)
+        {
+            ref Temperature temperature = entity.getComponent!Temperature();
+            immutable auto newValue = context.outputBuffer[y][x].value;
+
+            if(temperature.value != newValue)
+            {
+                temperature.value = newValue;
+
+                foreach(action; onTemperatureChanged)
+                {
+                    action(entity);
+                }            
+            }
+        }
     }
 }
-
 public class DeltaTemperatureSystem : MapEntitySystem!DeltaTemperature
 {
     protected override void onAdd(Entity entity)
     {
-        if(!entity.hasComponent!Particle) return;
-        ref DeltaTemperature delta = entity.getComponent!DeltaTemperature();
-        ref Temperature temperature = entity.getComponent!Temperature();
+        immutable DeltaTemperature delta = entity.getComponent!DeltaTemperature();
+        immutable Temperature temperature = entity.getComponent!Temperature();
+        
+        // Idk why, but I have to swap coords
+        int[2] position = entity.getComponent!Position().xy;
+        int temp = position[0];
+        position[0] = position[1];
+        position[1] = temp;
 
-        temperature.value += delta.delta;
-
-        (cast(TemperatureSystem) TemperatureSystem.instance).markDirty(entity);
+        (cast(TemperatureSystem) TemperatureSystem.instance).setTemperature(position, delta.delta + temperature.value);
     }
 }
 
