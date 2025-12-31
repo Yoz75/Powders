@@ -37,6 +37,7 @@ public:
 
     /// How fast particle changes it's temperature.
     TemperatureScalar transferCoefficient = 0.1;
+    TemperatureScalar transferCoefficient = 0.01;
 
     /// Temperature of a particle in degrees Celsius
     TemperatureScalar value = defaultTemperature; 
@@ -148,6 +149,7 @@ private void processHeat(shared TemperatureThreadContext* context)
     assert(context.inputBuffer.length == context.outputBuffer.length && context.outputBuffer.length,
         "Input, temp, and output temperature buffers must have the same resolution!");
     import std.math;
+    import std.algorithm;
     import core.atomic;
 
     foreach(y, ref row; context.inputBuffer)
@@ -191,6 +193,13 @@ private void processHeat(shared TemperatureThreadContext* context)
 
                     context.inputBuffer[y][x].value.atomicOp!"+="(selfDelta);
                     context.inputBuffer[neighborPosition[1]][neighborPosition[0]].value.atomicOp!"+="(neighborDelta);
+
+                    context.inputBuffer[y][x].value = 
+                        context.inputBuffer[y][x].value.clamp(Temperature.min, Temperature.max);
+
+                    context.inputBuffer[neighborPosition[1]][neighborPosition[0]].value = 
+                        context.inputBuffer[neighborPosition[1]][neighborPosition[0]].value
+                        .clamp(Temperature.min, Temperature.max);
                 }
             }
         }
