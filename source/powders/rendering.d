@@ -98,7 +98,7 @@ private final class MapRenderSystem : BaseSystem
     public override void onCreated()
     {
         import powders.particle.basics;
-        mapSprite = gameWindow.createAttachedSprite(globalMap.resolution, kc.white);
+        mapSprite = Sprite.create(globalMap.resolution, kc.white);
 
         foreach (ref Entity entity; globalMap)
         {
@@ -110,8 +110,8 @@ private final class MapRenderSystem : BaseSystem
 
     protected override void onBeforeUpdate()
     {
-        gameWindow.applySpriteChanges(cast (immutable Sprite) mapSprite);
-        gameWindow.renderAtWorldPos([0, 0], cast (immutable Sprite) mapSprite);
+        mapSprite.applyChanges();
+        gameWindow.renderAtWorldPos([0, 0], mapSprite);
     }
 }
 
@@ -158,7 +158,7 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
             {
                 immutable auto color = currentRenderModeConverter(entity_);
                 lastFrameBuffer[y][x] = color;
-                gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite, [x, y], color);
+                MapRenderSystem.instance.mapSprite.setPixel([x, y], color);
             }
         }
             
@@ -188,8 +188,7 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
 
         kc.Color color = lastFrameBuffer[position.xy[1]][position.xy[0]] = currentRenderModeConverter(entity);
         
-        gameWindow.setPixelOfSprite(cast(immutable Sprite) MapRenderSystem.instance.mapSprite,
-            [position.xy[0], position.xy[1]], color);
+        MapRenderSystem.instance.mapSprite.setPixel(position.xy, color);
     }
 }
 
@@ -265,10 +264,16 @@ public enum RenderMode
 
 public class RenderModeSystem : BaseSystem
 {
+    private struct RenderMode
+    {
+        renderModeConverter converter;
+        Keys key;
+    }
+
     public static RenderModeSystem instance;
     import powders.input;
 
-    private renderModeConverter[Keys.max + 1] renderModes;
+    private RenderMode[] renderModes;
 
     public this()
     {
@@ -277,7 +282,7 @@ public class RenderModeSystem : BaseSystem
 
     public void addRenderMode(renderModeConverter converter, Keys selectKey)
     {
-        renderModes[selectKey] = converter;
+        renderModes ~= RenderMode(converter, selectKey);
     }
 
     public renderModeConverter getCurrentRenderModeConverter()
@@ -293,12 +298,11 @@ public class RenderModeSystem : BaseSystem
 
     protected override void onUpdated()
     {
-        auto states = gameWindow.getKeyStates();
-        foreach(i, state; states)
+        foreach(renderMode; renderModes)
         {
-            if(state && renderModes[i] != renderModeConverter.init)
+            if(gameWindow.isKeyPressed(renderMode.key))
             {
-                (cast(RenderableSystem) RenderableSystem.instance).currentRenderModeConverter = renderModes[i];
+                (cast(RenderableSystem) RenderableSystem.instance).currentRenderModeConverter = renderMode.converter;
             }
         }
     }

@@ -5,6 +5,7 @@ import davincilib.color;
 import davincilib.abstractions;
 import std.traits : isNumeric;
 import raylib;
+import raygui;
 
 struct Optional(TValue, TError)
 {
@@ -60,7 +61,7 @@ struct Camera
     Camera2D raylibCamera;
     alias raylibCamera this;
 
-    void opAssign(Camera2D camera) shared
+    void opAssign(Camera2D camera)
     {        
         raylibCamera = camera;
     }
@@ -164,7 +165,7 @@ private struct InitWindowInfo
 /// Params:
 ///   position = the sprite's position
 ///   sprite = the sprite itself
-private void renderSpriteAtScreen(T)(immutable T[2] position, immutable Sprite sprite) if(isNumeric!T)
+private void renderSpriteAtScreen(T)(T[2] position, Sprite sprite) if(isNumeric!T)
 {
     immutable source = Rectangle(0, 0, sprite.texture.width, sprite.texture.height);
     immutable auto destination = Rectangle(position[0], position[1], 
@@ -176,150 +177,33 @@ private void renderSpriteAtScreen(T)(immutable T[2] position, immutable Sprite s
     DrawTexturePro(sprite.texture, source, destination, origin, sprite.rotation, cast(raylib.Color) sprite.color);
 }
 
-private struct RenderThreadContext
+public class Window : IWindow!(Sprite, Camera)
 {
-public:
+    private Camera camera;
 
-    int[2] windowResolution, screenResolution;
-    bool shouldCloseWindow;
-    bool wasInited = false;
-
-    Camera* camera;
-    bool[Keys.max + 1] keyDownStates;
-    bool[Keys.max + 1] keyPressedStates;
-    float[2] mousePosition = [0, 0], mouseWorldPosition = [0, 0];
-    float deltaTime;
-    float mouseWheelMove;
-    bool[MouseButtons.max + 1] mouseButtonsDownStates;
-    bool[MouseButtons.max + 1] mouseButtonsPressedStates;
-}
-
-/*
-    CALL THESE FUNCTIONS ONLY IN THE RENDER THREAD
-*/
-private void updateKeys(shared RenderThreadContext* context)
-{
-    import raylib;
-    
-    for(int i; i < context.keyDownStates.length; i++)
+    void initWindow(int[2] resolution, bool isFullscreen, string title)
     {
-        // Idk why (maybe because of multythreading) the scheme with current states and previous states just don't work :\
-        context.keyPressedStates[i] = IsKeyPressed(i);
-        context.keyDownStates[i] = IsKeyDown(i);
-    }
-}
+        camera = Camera2D(Vector2(0, 0), Vector2(0, 0), 0, 0);
 
-private void updateMousePosition(shared RenderThreadContext* context)
-{
-    import raylib;
-
-    immutable auto tempMousePosition = GetMousePosition();
-    immutable auto tempMouseWorldPosition = GetScreenToWorld2D(tempMousePosition, *context.camera);
-
-    context.mousePosition = [tempMousePosition.x, tempMousePosition.y];
-    context.mouseWorldPosition = [tempMouseWorldPosition.x, tempMouseWorldPosition.y];
-}
-
-private void updateouseButtons(shared RenderThreadContext* context)
-{
-    import raylib;
-
-    for(int i; i < context.mouseButtonsDownStates.length; i++)
-    {
-        context.mouseButtonsDownStates[i] = IsMouseButtonDown(i);
-        context.mouseButtonsPressedStates[i] = IsMouseButtonPressed(i);
-    }
-}
-/*
-    END
-*/
-
-private alias raylibMessage = void delegate() immutable @system;
-private alias anotherRaylibMessage = void delegate() immutable nothrow @nogc @system;
-private void raylibThread(immutable InitWindowInfo initInfo, shared RenderThreadContext* context) //ptr because spawn has a strange behaviour according to refs
-{
-    try
-    {
-        import raylib;
-
-        auto messageHandler = (raylibMessage msg)
-        {
-            import std.stdio;
-            msg();
-        };
-
-        auto anotherMessageHandler = (anotherRaylibMessage msg)
-        {
-            msg();
-        };
-
-        if(initInfo.isFullscreen)
+        if(isFullscreen)
         {
             SetConfigFlags((ConfigFlags.FLAG_FULLSCREEN_MODE | ConfigFlags.FLAG_BORDERLESS_WINDOWED_MODE));    
-            InitWindow(GetScreenWidth(), GetScreenHeight(), initInfo.title.ptr);
+            InitWindow(GetScreenWidth(), GetScreenHeight(), title.ptr);
         }
         else
         {
-            InitWindow(initInfo.resolution[0], initInfo.resolution[1], initInfo.title.ptr);
+            InitWindow(resolution[0], resolution[1], title.ptr);
         }
-        
-        context.wasInited = true;
-
-        context.screenResolution = [GetScreenWidth(), GetScreenHeight()];
-
-        while(true)
-        {
-            updateKeys(context);
-            updateMousePosition(context);
-            updateouseButtons(context);
-
-            context.shouldCloseWindow = WindowShouldClose();
-            context.windowResolution = [GetScreenWidth(), GetScreenHeight()];
-            context.deltaTime = GetFrameTime();
-            context.mouseWheelMove = GetMouseWheelMove();
-
-            receiveTimeout(-1.msecs, messageHandler, anotherMessageHandler);
-        }
-    }
-    catch(Throwable ex)
-    {
-        import core.stdc.stdlib;
-        import std.stdio; writeln("FATAL RENDER THREAD ERROR: ", ex.message);
-
-        exit(-2);
-    }
-}
-
-public class Window : IWindow!(Sprite, Camera)
-{
-    private Tid raylibThreadId;
-    private shared Camera camera;
-    private shared RenderThreadContext renderContext;
-
-    void initWindow(immutable int[2] resolution, immutable bool isFullscreen, immutable string title)
-    {
-        camera  = Camera2D(Vector2(0, 0), Vector2(0, 0), 0, 0);
-        renderContext.camera = &camera;
-
-        InitWindowInfo initInfo;
-
-        initInfo.resolution = resolution;
-        initInfo.isFullscreen = isFullscreen;
-        initInfo.title = title;
-
-        raylibThreadId = spawn(&raylibThread, initInfo, &renderContext);
-
-        while(!renderContext.wasInited) {wait();}
     }
     
     void startFrame()
     {
-        raylibThreadId.send(() immutable {BeginDrawing();});
+        BeginDrawing();
     }
 
     void endFrame()
     {
-        raylibThreadId.send(() immutable {EndDrawing();});
+        EndDrawing();
     }
 
     Camera getCamera()
@@ -336,147 +220,106 @@ public class Window : IWindow!(Sprite, Camera)
     /// Returns: the window resolution
     int[2] getWindowResolution()
     {
-        return renderContext.windowResolution;
+        return [GetScreenWidth(), GetScreenHeight()];
     }
 
     /// Should window be closed?
     bool shouldCloseWindow()
     {
-        return renderContext.shouldCloseWindow;
+        return WindowShouldClose();
     }
 
     /// Render an instance of `TSprite` at a screen position
-    void renderAtScreenPos(immutable int[2] position, immutable Sprite sprite)
+    void renderAtScreenPos(int[2] position, Sprite sprite)
     {
-        raylibThreadId.send(() immutable
-        {
-            renderSpriteAtScreen(position, sprite);
-        });
+        renderSpriteAtScreen(position, sprite);        
     }
 
     /// Render an instance of `TSprite` at a relative screen position (from 0 to 1 for both dimensions)
-    void renderAtRelativeScreenPos(immutable float[2] position, immutable Sprite sprite)
+    void renderAtRelativeScreenPos(float[2] position, Sprite sprite)
     {
         auto absolutePosition = relativeScreenPos2ScreenPos(position, getWindowResolution());
         renderAtScreenPos(absolutePosition, sprite);
     }
     
     /// Render an instance of `TSprite` at world position
-    void renderAtWorldPos(immutable float[2] position, immutable Sprite sprite)
+    void renderAtWorldPos(float[2] position, Sprite sprite)
     {
-        raylibThreadId.send(() immutable
-        {
-            BeginMode2D(camera);
-            renderSpriteAtScreen(position, sprite);
-            EndMode2D();
-        });
+        BeginMode2D(camera);
+        renderSpriteAtScreen(position, sprite);
+        EndMode2D();        
     }
 
     /// Clear screen using black color
     void clearScreen()
     {
-        raylibThreadId.send(() immutable
-        {
-            ClearBackground(raylib.Colors.BLACK);
-        });
+        ClearBackground(raylib.Colors.BLACK);        
     }
 
     /// Is key down?
     /// Returns: true if key is down, false if not
-    bool isKeyDown(immutable Keys key)
+    bool isKeyDown(Keys key)
     {
-        return renderContext.keyDownStates[key];
+        return IsKeyDown(key);
     }
 
     /// Was key prassed this frame?
     /// Returns: true if key was pressed this frame, false otherwise
-    bool isKeyPressed(immutable Keys key)
+    bool isKeyPressed(Keys key)
     {
-        return renderContext.keyPressedStates[key];
+        return IsKeyPressed(key);
     }
 
     /// Get position of mouse
     /// Returns: position of mouse as float[2]
     float[2] getMousePosition()
     {
-        return renderContext.mousePosition;
+        immutable auto pos = GetMousePosition();
+        return [pos.x, pos.y];
     }
 
     /// Get position of mouse, but at world coordinates
     /// Returns: position of mouse as float[2]
     float[2] getMouseWorldPosition()
     {
-        return renderContext.mouseWorldPosition;
-    }
-    
-    import raygui;
+        immutable auto pos = GetScreenToWorld2D(GetMousePosition(), camera);
 
-    bool drawGUIButton(immutable int[2] absoluteScale, immutable int[2] absolutePosition, immutable string text)
-    {
-        struct Dummy {}
-
-        __gshared Optional!(bool, Dummy) result;
-        result = Dummy();
-
-        raylibThreadId.send(() immutable
-        { 
-            result = GuiButton(Rectangle(absolutePosition[0], absolutePosition[1], 
-                absoluteScale[0], absoluteScale[1]), text.ptr) > 0;
-        });
-
-        while(!result.hasValue) {wait();}
-
-        return result.value;
+        return[pos.x, pos.y];
     }
 
-    void drawText(immutable string text, immutable int[2] position, immutable int fontSize, immutable davincilib.Color color)
-    {
-        raylibThreadId.send(() immutable
-        {
-            DrawText(text.ptr, position[0], position[1], fontSize, cast(raylib.Color) color);
-        });
-    }
-
-    Sprite createAttachedSprite(immutable int[2] resolution, immutable davincilib.Color color)
-    {
-        struct Dummy {}
-        
-        __gshared Optional!(Sprite, Dummy) result;
-        result = Dummy();
-        raylibThreadId.send(() immutable
-        { 
-            result = Sprite.create(resolution, color);
-        });        
-
-        while(!result.hasValue) {wait();}
-
-        return result.value;
-    }
-
-    void setTargetFPS(immutable int fps)
-    {
-        raylibThreadId.send(() immutable
-        {
-            SetTargetFPS(fps);
-        });
-    }
-
+    /// Get time of rendering previous frame
     float getDeltaTime()
     {
-        return renderContext.deltaTime;
+        return GetFrameTime();
+    }
+
+    bool drawGUIButton(int[2] absoluteScale, int[2] absolutePosition, string text)
+    {
+        return GuiButton(Rectangle(absolutePosition[0], absolutePosition[1], 
+                absoluteScale[0], absoluteScale[1]), text.ptr) > 0;
+    }
+
+    void drawText(string text, int[2] position, int fontSize, davincilib.Color color)
+    {
+        DrawText(text.ptr, position[0], position[1], fontSize, cast(raylib.Color) color);        
+    }
+
+    void setTargetFPS(int fps)
+    {
+        SetTargetFPS(fps);
     }
 
     float getMouseWheelMove()
     {
-        return renderContext.mouseWheelMove;
+        return GetMouseWheelMove();
     }
 
-    bool isMouseButtonDown(immutable MouseButtons button)
+    bool isMouseButtonDown(MouseButtons button)
     {
-        return renderContext.mouseButtonsDownStates[button];
+        return IsMouseButtonDown(button);
     }
 
-    float[2] convertScreen2WorldPosition(immutable int[2] screenPosition) pure
+    float[2] convertScreen2WorldPosition(int[2] screenPosition) pure
     {
         immutable float screenX = cast(float)screenPosition[0];
         immutable float screenY = cast(float)screenPosition[1];
@@ -503,20 +346,9 @@ public class Window : IWindow!(Sprite, Camera)
     }
 
 
-    void setPixelOfSprite(immutable Sprite attachedSprite, immutable int[2] position, immutable davincilib.Color color)
+    void setPixelOfSprite(Sprite attachedSprite, int[2] position, davincilib.Color color)
     {
-        raylibThreadId.send(() immutable
-        {
-            attachedSprite.setPixel(position, color);
-        });
-    }
-
-    void applySpriteChanges(immutable Sprite attachedSprite)
-    {
-        raylibThreadId.send(() immutable
-        {
-            attachedSprite.applyChanges();
-        });
+        attachedSprite.setPixel(position, color);        
     }
 
     /// Just a thing that waits 1 msec, so compiler won't optimize out loops
@@ -525,8 +357,251 @@ public class Window : IWindow!(Sprite, Camera)
         import core.thread; Thread.getThis.sleep(1.nsecs);
     }
 
-    bool[Keys.max + 1] getKeyStates()
+    /// Get a new uninitialized shader buffer
+    /// Returns: instance of some class that implements `IShaderBuffer`
+    IShaderBuffer getNewUninitedBuffer() => new RaylibShaderBuffer();
+
+    /// Get a new unitialized compute shader
+    /// Returns: instance of some class that implements `IComputeShader`
+    IComputeShader getNewUninitedComputeShader() => new RaylibComputeShader();
+
+    IBasicShader getNewUninitedBasicShader() => new RaylibBasicShader();
+}
+
+
+private void checkErrors()
+{
+    rlCheckErrors();
+}
+
+
+/// A buffer allocated on GPU
+public class RaylibShaderBuffer : IShaderBuffer
+{
+    private uint glID;
+    
+    /// Initialize this buffer
+    /// Params:
+    /// size = size of buffer in bytes
+    /// data = the initial data of buffer, if `data` == null, buffer won't be initialized
+    /// hint = hint that tells driver how we'll use our buffer
+    void initMe(uint size, void* data, BufferUsageHint hint)
     {
-        return renderContext.keyDownStates;
+        glID = rlLoadShaderBuffer(size, data, hint);
+        checkErrors();
+    }
+
+    /// Get internal id of the buffer
+    uint getInternalID() => glID;
+
+    /// Free GPU resources of the buffer
+    void free()
+    {
+        rlUnloadShaderBuffer(glID);
+        checkErrors();
+    }
+    
+    /// Update SSBO buffer's value.
+    /// Params:
+    /// data = the new data
+    /// offset = ofset of data
+    void update (void[] data, uint offset = 0)
+    {
+        rlUpdateShaderBuffer(glID, data.ptr, cast(uint) data.length, offset);  
+        checkErrors();
+    }
+
+    /// Read SSBO buffer's value
+    /// Params:
+    /// data = the array that'll be overwritten
+    /// elementSize = size of one element in array
+    /// offset = offset of data
+    void read(void[] data, uint offset = 0)
+    {
+        rlReadShaderBuffer(glID, data.ptr, cast(uint) data.length, offset);
+        checkErrors();
+    }
+}
+
+/// A program executed on GPU
+private class RaylibBasicShader : IBasicShader
+{
+    private Shader shader;
+
+    // Key is buffer's binding index, value is glID
+    private uint[uint] attachedBuffers;
+
+    /// Init the shader: compile and link its vertex and fragment parts
+    /// Params:
+    /// vs = vertex shader
+    /// fs = fragment shader
+    void initMe(string vs, string fs)
+    {
+        shader = LoadShaderFromMemory(vs.ptr, fs.ptr);
+    }
+
+    /// Free the shader's resources
+    void free()
+    {
+        // associative arrays support value iterations (like there) and key-value iterations
+        foreach(bufferId; attachedBuffers)
+        {
+            rlUnloadShaderBuffer(bufferId);
+            rlCheckErrors();
+        }
+
+        UnloadShader(shader);
+    }
+
+    /// Attach a GPU buffer to a shader. You can attach a single buffer to multiple shaders
+    /// Params:
+    /// shader = the shader
+    /// buffer = the attach buffer
+    /// index = the index of buffer in shader's code
+    void attachBuffer(IShaderBuffer buffer, uint bindingIndex)
+    {
+        attachedBuffers[bindingIndex] = buffer.getInternalID();
+    }
+
+    /// Detach a buffer from a shader
+    /// Params:
+    /// shader = the shader;
+    /// index = the index of buffer in shader's code
+    void detachBuffer(uint bindingIndex)
+    {
+        attachedBuffers.remove(bindingIndex);
+    }
+
+    /// Begin current shader mode
+    void beginMode()
+    {
+        BeginShaderMode(shader);
+    }
+    
+    /// End current shader mdoe
+    void endMode()
+    {
+        EndShaderMode();
+    }
+
+    /// Get uniform variable of this shader
+    /// Params:
+    /// name = the name of variable in shader
+    /// type = the type of variable in shader
+    /// Returns: instance of some class that implements IUniform
+    IUniform getUniform(string name, UniformType type)
+    {
+        RaylibUniform uniform = new RaylibUniform();
+
+        uniform.glID = rlGetLocationUniform(shader.id, name.ptr);
+
+        uniform.shaderGlID = shader.id;
+        uniform.type = type;
+
+        return uniform;
+    }
+}
+
+/// A program executed on GPU
+private class RaylibComputeShader : IComputeShader
+{
+    private uint glID;
+
+    // Key is buffer's binding index, value is glID
+    private uint[uint] attachedBuffers;
+
+    /// Init the shader: compile and link its code from sources
+    /// Params:
+    /// source = the source code of the shader
+    void initMe(string source)
+    {
+        glID = rlLoadComputeShaderProgram(rlCompileShader(source.ptr, RL_COMPUTE_SHADER));
+        checkErrors();
+    }
+
+    /// Free the shader's resources
+    void free()
+    {
+        // associative arrays support value iterations (like there) and key-value iterations
+        foreach(bufferId; attachedBuffers)
+        {
+            rlUnloadShaderBuffer(bufferId);
+            rlCheckErrors();
+        }
+
+        rlUnloadShaderProgram(glID);
+        checkErrors();
+    }
+
+    /// Attach a GPU buffer to a shader. You can attach a single buffer to multiple shaders
+    /// Params:
+    /// shader = the shader
+    /// buffer = the attach buffer
+    /// index = the index of buffer in shader's code
+    void attachBuffer(IShaderBuffer buffer, uint bindingIndex)
+    {
+        attachedBuffers[bindingIndex] = buffer.getInternalID();
+    }
+
+    /// Detach a buffer from a shader
+    /// Params:
+    /// shader = the shader;
+    /// index = the index of buffer in shader's code
+    void detachBuffer(uint bindingIndex)
+    {
+        attachedBuffers.remove(bindingIndex);
+    }
+
+    /// Execute the shader
+    void execute(uint[3] groupSizes)
+    {
+        rlEnableShader(glID);
+
+        foreach(bufferIndex, bufferId; attachedBuffers)
+        {
+            rlBindShaderBuffer(bufferId, bufferIndex);
+        }
+
+        rlComputeShaderDispatch(groupSizes[0], groupSizes[1], groupSizes[2]);
+        checkErrors();
+
+        rlDisableShader();
+    }
+
+    /// Get uniform variable of this shader
+    /// Params:
+    /// name = the name of variable in shader
+    /// type = the type of variable in shader
+    /// Returns: instance of some class that implements IUniform
+    IUniform getUniform(string name, UniformType type)
+    {
+        RaylibUniform uniform = new RaylibUniform();
+
+        uniform.glID = rlGetLocationUniform(glID, name.ptr);
+        checkErrors();
+
+        uniform.shaderGlID = glID;
+        uniform.type = type;
+
+        return uniform;
+    }
+}
+
+private class RaylibUniform : IUniform
+{
+    private uint glID;
+    private uint shaderGlID;
+    private UniformType type;
+
+    /// Set the value of uniform
+    /// Params:
+    /// value = the pointer to value
+    /// count = if uniform is an array, this parameter must be length of the array, otherwise 1
+    void setValue(void* value, uint count = 1)
+    {
+        rlEnableShader(shaderGlID);
+        rlSetUniform(glID, value, type, count);
+        checkErrors();
+        rlDisableShader();
     }
 }
