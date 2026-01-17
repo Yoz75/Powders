@@ -181,14 +181,22 @@ public class MovableSystem : MapEntitySystem!Movable
     }
 }
 
-public class GravitySystem : MapEntitySystem!Gravity
+public class GravitySystem : System!Gravity
 {
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Gravity gravity)
+    import kernel.simulation;
+
+    protected override void onUpdated()
     {
-        if(entity.hasComponent!Movable())
+        auto ref data = ComponentPool!Movable.instance.data[Simulation.currentWorld.id];
+
+        foreach(i, ref movable; data)
         {
-            ref Movable movable = entity.getComponent!Movable();
-            movable.velocity[] += Gravity.direction[] * gravity.gravity;
+            Entity entity = Entity(Simulation.currentWorld, i);
+
+            if(entity.hasComponent!Gravity())
+            {
+                movable.velocity[] += Gravity.direction[] * Gravity.gravity;
+            }
         }
     }
 }
