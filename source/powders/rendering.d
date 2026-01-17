@@ -85,10 +85,26 @@ public int[2] relativeScreenPos2ScreenPos(float[2] relativePosition)
     return absolutePosition;
 }
 
+//ТУДУ: сделать наследников этого класса (на каждый рендер мод по одному) и чтоб они там себе внутри буфферы заполняли и выводили, а не это говно с чанками
+private abstract class MapShaderProvider
+{
+    protected IBasicShader shader;
+
+    public IShader getShader() => shader;
+
+    public final void prepare()
+    {
+        onPrepare();
+    }
+
+    protected abstract void onPrepare();
+}
+
 private final class MapRenderSystem : BaseSystem
 {
     static MapRenderSystem instance;
     private Sprite mapSprite;
+    private IBasicShader mapShader;
 
     public this()
     {

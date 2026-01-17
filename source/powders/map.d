@@ -27,8 +27,8 @@ public abstract class MapEntitySystem(T) : System!T
     public struct Chunk
     {
     public:
-        private ChunkState state = ChunkState.dirty;
-        private Entity[][] data;
+        ChunkState state = ChunkState.dirty;
+        Entity[][] data;
 
         void makeDirty()
         {

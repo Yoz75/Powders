@@ -5,24 +5,30 @@ import powders.io;
 import powders.particle.register;
 import powders.particle.basics;
 import powders.map;
+import powders.rendering;
 
 // Number type used for heat and temperature
-alias TemperatureScalar = double;
+alias TemperatureScalar = float;
+
+public pure TemperatureScalar conductivity2coefficient(TemperatureScalar conductivity, 
+    TemperatureScalar scale, TemperatureScalar maxConductivity)
+{
+    import std.math;
+
+    return(log(1 + scale * conductivity)) / (log(scale * maxConductivity));
+}
 
 @Component(OnDestroyAction.setInit) public struct Temperature
 {
     mixin MakeJsonizable;
 
 public:
-    /// The least fractional part of temperature
-    enum TemperatureScalar threshold = 0.01;
-
     enum TemperatureScalar min = -273.15;
     enum TemperatureScalar max = 100_000;
 
     enum TemperatureScalar maxCondictivity = 2200;
     enum TemperatureScalar minConductivity = 0;
-    enum TemperatureScalar defaultConductivity = 1500;
+    enum TemperatureScalar defaultConductivity = conductivity2coefficient(0.024, conductivityScale, maxCondictivity);
 
     /// Scale of conductivity normalisation
     enum conductivityScale = 250;
@@ -35,7 +41,7 @@ public:
     TemperatureScalar heatCapacity = airHeatCapacity;
 
     /// How fast particle changes it's temperature.
-    TemperatureScalar transferCoefficient = 1;
+    TemperatureScalar transferCoefficient = defaultConductivity;
 
     /// Temperature of a particle in degrees Celsius
     TemperatureScalar value = defaultTemperature; 
@@ -66,15 +72,17 @@ public:
 
 import kernel.todo;
 mixin TODO!("Currently TemperatureSystem is broken when process ambient heat, fix later!");
-public class TemperatureSystem : MapEntitySystem!Temperature
+public class TemperatureSystem : System!Temperature
 {
     public void delegate(Entity entity)[] onTemperatureChanged;
 
-    /// Cache for temperature components because getComponent is slow
-    private Temperature*[] temperatureCache;
-    private Position*[] positionCache;
-
     private int[2] mapResolution;
+
+    private IComputeShader temperatureShader;
+    private IShaderBuffer valueInSSBO, valueOutSSBO;
+
+    private Temperature[] valueInBuffer;
+    private Temperature[] valueOutBuffer;
 
     /// Mark that entity was updated and it's chunk must be recomputed
 
@@ -82,17 +90,6 @@ public class TemperatureSystem : MapEntitySystem!Temperature
     {
         mapResolution = globalMap.resolution();
 
-        ComponentPool!Temperature.instance.reserve(currentWorld, mapResolution[0] * mapResolution[1]);
-        temperatureCache.reserve(mapResolution[0] * mapResolution[1]);
-        positionCache.reserve(mapResolution[0] * mapResolution[1]);
-
-        foreach(entity; globalMap)
-        {
-            temperatureCache ~= &entity.getComponent!Temperature();
-            positionCache ~= &entity.getComponent!Position();
-        }
-
-        import powders.rendering;
         onTemperatureChanged ~= (Entity self) 
         {
             if(RenderModeSystem.instance.getCurrentRenderModeConverter() == &temperature2Color)
@@ -101,98 +98,120 @@ public class TemperatureSystem : MapEntitySystem!Temperature
 
         assert(RenderModeSystem.instance !is null, "Render mode system is not initialized but we add render mode!!!");
         RenderModeSystem.instance.addRenderMode(&temperature2Color, Keys.two);
+
+        temperatureShader = gameWindow.getNewUninitedComputeShader();
+        temperatureShader.initMe(import("computeShaders/temperature.comp"));
+
+        initSSBOs();
+
+        auto resolutionUniform = temperatureShader.getUniform("resolution", UniformType.vector2i);
+        
+        resolutionUniform.setValue(mapResolution.ptr);
+    }
+
+    public void updateTemperatureOf(Entity entity)
+    {
+        immutable auto mapPos = entity.getComponent!Position().xy;
+
+        Temperature[1] resultBuffer;
+        resultBuffer[0] = entity.getComponent!Temperature();
+
+        valueInSSBO.update(resultBuffer, cast(uint)((mapPos[0] + mapResolution[0] * mapPos[1]) * Temperature.sizeof));
+    }
+
+    protected override void onDestroyed()
+    {
+        valueInSSBO.free();
+        valueOutSSBO.free();
+
+        temperatureShader.free();
     }
 
     protected override void onAdd(Entity entity)
     {
-        markDirty(entity);
+        updateTemperatureOf(entity);
+        foreach(action; onTemperatureChanged)
+        {
+            action(entity);
+        }
     }
 
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Temperature temperature)
+    protected override void onUpdated()
     {
+        import powders.timecontrol;
+
+        if(globalGameState != GameState.play)
+        {
+            foreach(entity; globalMap)
+            {
+                foreach(action; onTemperatureChanged)
+                {
+                    action(entity);
+                }
+            }
+
+            return;
+        }
+
+        import kernel.simulation;
         import std.math;
         import std.algorithm.comparison : clamp;
         import std.traits : EnumMembers;
 
-        enum NeighborBiases : int[2]
+        /*foreach(x, y, entity; globalMap)
         {
-            topLeft = [-1, 1],
-            top = [0, 1],
-            topRight = [1, 1],
-            left = [-1, 0],
-            right = [1, 0],
-            bottomLeft = [-1, -1],
-            bottom = [0, -1],
-            bottomRight = [1, -1],
-            self = [0, 0]
-        }
-        
-        int[2] selfPosition = positionCache[entity.id].xy;
-        int[2] neighborPosition;
-        int[2] neighborChunkIndex;
-        Entity neighborEntity;
+            immutable auto index = x + mapResolution[0] * y;
+            auto ref temperature = entity.getComponent!Temperature();
 
-        bool isValidNeighbor, wasAnyTransfer;
-        Temperature* neighborTemperature;
-        TemperatureScalar resultTemperature = 0, selfDelta = 0, neighborDelta = 0;
-
-        immutable bool isValidParticle = entity.hasComponent!Particle;
-        
-        static foreach(bias; EnumMembers!NeighborBiases)
-        {
-            neighborPosition[] = selfPosition[] + bias[];
-            neighborEntity = globalMap.getAt(neighborPosition);
-            neighborTemperature = &neighborEntity.getComponent!Temperature();
-    
-            isValidNeighbor = neighborEntity.hasComponent!Particle();
-
-            wasAnyTransfer |= isValidNeighbor & (temperature.value != neighborTemperature.value);
-
-            resultTemperature = (temperature.heatCapacity * temperature.value + 
-            neighborTemperature.heatCapacity * neighborTemperature.value) / 
-            (temperature.heatCapacity + neighborTemperature.heatCapacity);
-
-            selfDelta = (resultTemperature - temperature.value) * temperature.transferCoefficient;
-            neighborDelta = (resultTemperature - neighborTemperature.value) * neighborTemperature.transferCoefficient;
-
-            selfDelta = selfDelta.quantize(Temperature.threshold);
-            neighborDelta = neighborDelta.quantize(Temperature.threshold);
-
-            temperature.value += isValidNeighbor & isValidParticle ? selfDelta : 0;
-            neighborTemperature.value += isValidNeighbor & isValidParticle ? neighborDelta : 0;
+            valueInBuffer[index] = temperature;            
         }
 
-        if(!wasAnyTransfer)
+        valueInSSBO.update(valueInBuffer);*/
+        temperatureShader.execute([mapResolution[0] / Map.chunkSize, mapResolution[1] / Map.chunkSize, 1]);
+        valueOutSSBO.read(valueOutBuffer);
+
+        foreach(x, y, entity; globalMap)
         {
-            chunk.makeClean();
-            return;
-        }
-        else
-        {            
-            chunk.makeDirty();
+            auto ref temperature = entity.getComponent!Temperature();
 
-            // We return here, but not at start because now program can mark unchanged chunks as clean
-            if(!entity.hasComponent!Particle) return; 
-
-            static foreach(bias; EnumMembers!NeighborBiases)
-            {
-                neighborPosition[] = selfPosition[] + bias[];
-
-                neighborPosition[0] = neighborPosition[0] - cast(int)(neighborPosition[0] >= mapResolution[0]);
-                neighborPosition[1] = neighborPosition[1] - cast(int)(neighborPosition[1] >= mapResolution[1]);
-
-                neighborChunkIndex = Chunk.world2ChunkIndex(neighborPosition);
-                chunks[neighborChunkIndex[1]][neighborChunkIndex[0]].makeDirty();
-            }            
-
+            temperature = valueOutBuffer[x + mapResolution[0] * y];
             foreach(action; onTemperatureChanged)
             {
                 action(entity);
             }
         }
+
+        auto temp = valueInSSBO;
+        valueInSSBO = valueOutSSBO;
+        valueOutSSBO = temp;
+
+        temperatureShader.detachBuffer(1);
+        temperatureShader.detachBuffer(2);
+
+        temperatureShader.attachBuffer(valueInSSBO, 1);
+        temperatureShader.attachBuffer(valueOutSSBO, 2);
+    }
+
+    pragma(inline, true)
+    private void initSSBOs()
+    {
+        valueInSSBO = gameWindow.getNewUninitedBuffer();
+        valueOutSSBO = gameWindow.getNewUninitedBuffer();
+
+        immutable auto mapByteSize = uint(Temperature.sizeof) * mapResolution[0] * mapResolution[1];
+        immutable auto chunkOutSize = 
+            uint(uint.sizeof) * mapResolution[0] * mapResolution[1] / (Map.chunkSize * Map.chunkSize);
+
+        valueInBuffer = new Temperature[mapResolution[0] * mapResolution[1]];
+        valueInBuffer[] = Temperature.init; // bruh at some reasone default values in the array are not Temperature.init
+
+        valueOutBuffer = new Temperature[mapResolution[0] * mapResolution[1]];
         
-        temperature.value = temperature.value.quantize(Temperature.threshold);
-        temperature.value = temperature.value.clamp(Temperature.min, Temperature.max);
+        valueInSSBO.initMe(mapByteSize, valueInBuffer.ptr, BufferUsageHint.StreamCPU2GPU);
+        valueOutSSBO.initMe(mapByteSize, null, BufferUsageHint.StreamGPU2CPU);
+
+        temperatureShader.attachBuffer(valueInSSBO, 1);
+        temperatureShader.attachBuffer(valueOutSSBO, 2);
     }
 }
 
@@ -200,13 +219,11 @@ public class DeltaTemperatureSystem : MapEntitySystem!DeltaTemperature
 {
     protected override void onAdd(Entity entity)
     {
-        if(!entity.hasComponent!Particle) return;
         ref DeltaTemperature delta = entity.getComponent!DeltaTemperature();
         ref Temperature temperature = entity.getComponent!Temperature();
 
         temperature.value += delta.delta;
-
-        (cast(TemperatureSystem) TemperatureSystem.instance).markDirty(entity);
+        (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(entity);
     }
 }
 
@@ -222,7 +239,6 @@ public Color temperature2Color(Entity entity)
     enum maxLittleHotTemperature = 2000;
     enum maxHotTemperature = 3000;
     enum maxVeryHotTemperature = 4000;
-    enum maxTemperature = Temperature.max;
 
     enum coldColor = blue;
     enum zeroColor = black;
