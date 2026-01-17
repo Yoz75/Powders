@@ -224,8 +224,6 @@ public class ChangeGravitySystem : BaseSystem
 
 public class PowderSystem : MapEntitySystem!Powder
 {
-    import std.random;
-
     private void markUpdated(Entity entity)
     {
         immutable int[2] position = entity.getComponent!Position().xy;
@@ -241,6 +239,9 @@ public class PowderSystem : MapEntitySystem!Powder
 
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Powder powder)
     {
+        static uint fallDirection;
+        fallDirection++;
+
         chunk.makeClean();
         if(!entity.hasComponent!Movable())
         {
@@ -275,7 +276,8 @@ public class PowderSystem : MapEntitySystem!Powder
             GravityDirection.up: [[-1, -1], [1, -1]]
         ];
 
-        entity.getComponent!Movable.velocity = biases[Gravity.direction][uniform(0, 2)];
+        // Every odd frame fall to one side and every even to the other
+        entity.getComponent!Movable.velocity = biases[Gravity.direction][fallDirection & 1];
     }
 }
 
