@@ -42,6 +42,7 @@ public class WWorldConductorSystem : MapEntitySystem!WWorldConductor
     
     public override void onCreated()
     {
+        useAfterUpdate = true;
         onUpdatedSparkle ~= (Entity self) 
         {
             (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
@@ -53,14 +54,6 @@ public class WWorldConductorSystem : MapEntitySystem!WWorldConductor
 
     protected override void afterUpdateComponent(Entity entity, ref Chunk chunk, ref WWorldConductor conductor)
     {
-        if(conductor.nextState != conductor.state)
-        {
-            chunk.makeDirty();
-        }
-        else 
-        {
-            chunk.makeClean();
-        }
         conductor.state = conductor.nextState;
     }
 
