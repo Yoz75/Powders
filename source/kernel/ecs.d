@@ -16,7 +16,7 @@ public struct ComponentPool(T)
 {
     public static ComponentPool!T instance;
 
-    private T[][] data;
+    T[][] data;
     // is entity [worldId][i] has this component or not?
     private BitArray[] entitiesHasTable;
 

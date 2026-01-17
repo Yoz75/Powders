@@ -1,10 +1,13 @@
 module powders.particle.wireworld;
 
 import kernel.ecs;
+import kernel.simulation;
 import powders.map;
 import powders.rendering;
 import powders.particle.register;
 import powders.io;
+import powders.timecontrol;
+import std.parallelism;
 
 /// State of wireworld conductor particle
 public enum ConductorState
@@ -35,14 +38,14 @@ public:
 }
 
 /// Wireworld electricity system
-public class WWorldConductorSystem : MapEntitySystem!WWorldConductor
+public class WWorldConductorSystem : System!WWorldConductor
 {
     /// Action, that calls when particle became charged or uncharged
     public void delegate(Entity entity)[] onUpdatedSparkle;
     
     public override void onCreated()
     {
-        useAfterUpdate = true;
+        ComponentPool!WWorldConductor.instance.reserve(Simulation.currentWorld, globalMap.resolution[0] * globalMap.resolution[1]);
         onUpdatedSparkle ~= (Entity self) 
         {
             (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
@@ -52,49 +55,68 @@ public class WWorldConductorSystem : MapEntitySystem!WWorldConductor
         RenderModeSystem.instance.addRenderMode(&wwConductor2Color, Keys.three);
     }
 
-    protected override void afterUpdateComponent(Entity entity, ref Chunk chunk, ref WWorldConductor conductor)
+    protected override void onAfterUpdate()
     {
-        conductor.state = conductor.nextState;
+        if(globalGameState != GameState.play) return;
+
+        ref data = ComponentPool!WWorldConductor.instance.data[Simulation.currentWorld.id];
+        foreach(i, ref conductor; data)
+        {
+            Entity entity = Entity(Simulation.currentWorld, i);
+            if(!entity.hasComponent!WWorldConductor) continue;  
+
+            conductor.state = conductor.nextState;
+        }
     }
 
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref WWorldConductor conductor)
+    protected override void onUpdated()
     {
-        if(conductor.state == ConductorState.nothing)
+        if(globalGameState != GameState.play) return;
+
+        ref data = ComponentPool!WWorldConductor.instance.data[Simulation.currentWorld.id];
+        foreach(i, ref conductor; data)
         {
-            auto neighbors = globalMap.getNeighborsAt(entity.getComponent!Position.xy);
+            Entity entity = Entity(Simulation.currentWorld, i);
+            if(!entity.hasComponent!WWorldConductor) continue;
 
-            ubyte headsCount;
-            foreach(row; neighbors)
+            conductor.state = conductor.nextState;
+            if(conductor.state == ConductorState.nothing)
             {
-                foreach(neighbor; row)
+                auto neighbors = globalMap.getNeighborsAt(entity.getComponent!Position.xy);
+
+                ubyte headsCount;
+                foreach(row; neighbors)
                 {
-                    if(!neighbor.hasComponent!WWorldConductor) continue;
-
-                    ref WWorldConductor neighborConductor = neighbor.getComponent!WWorldConductor();
-
-                    if(neighborConductor.state == ConductorState.head)
+                    foreach(neighbor; row)
                     {
-                        headsCount++;
-                    }
-                }   
+                        if(!neighbor.hasComponent!WWorldConductor) continue;
+
+                        ref WWorldConductor neighborConductor = neighbor.getComponent!WWorldConductor();
+
+                        if(neighborConductor.state == ConductorState.head)
+                        {
+                            headsCount++;
+                        }
+                    }   
+                }
+
+                conductor.nextState = headsCount == 1 || headsCount == 2 ? ConductorState.head : ConductorState.nothing;
+            }
+            else if(conductor.state == ConductorState.head)
+            {
+                conductor.nextState = ConductorState.tail;
+            }
+            else if(conductor.state == ConductorState.tail)
+            {
+                conductor.nextState = ConductorState.nothing;
             }
 
-            conductor.nextState = headsCount == 1 || headsCount == 2 ? ConductorState.head : ConductorState.nothing;
-        }
-        else if(conductor.state == ConductorState.head)
-        {
-            conductor.nextState = ConductorState.tail;
-        }
-        else if(conductor.state == ConductorState.tail)
-        {
-            conductor.nextState = ConductorState.nothing;
-        }
-
-        if(conductor.nextState != conductor.state)
-        {
-            foreach(action; onUpdatedSparkle)
+            if(conductor.nextState != conductor.state)
             {
-                action(entity);
+                foreach(action; onUpdatedSparkle)
+                {
+                    action(entity);
+                }
             }
         }
     }
