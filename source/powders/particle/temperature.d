@@ -158,15 +158,6 @@ public class TemperatureSystem : System!Temperature
         import std.algorithm.comparison : clamp;
         import std.traits : EnumMembers;
 
-        /*foreach(x, y, entity; globalMap)
-        {
-            immutable auto index = x + mapResolution[0] * y;
-            auto ref temperature = entity.getComponent!Temperature();
-
-            valueInBuffer[index] = temperature;            
-        }
-
-        valueInSSBO.update(valueInBuffer);*/
         temperatureShader.execute([mapResolution[0] / Map.chunkSize, mapResolution[1] / Map.chunkSize, 1]);
         valueOutSSBO.read(valueOutBuffer);
 
