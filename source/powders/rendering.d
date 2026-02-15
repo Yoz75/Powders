@@ -150,7 +150,7 @@ public final class RenderableSystem : MapEntitySystem!MapRenderable
 
         immutable int[2] resolution = globalMap.resolution;
 
-        lastFrameBuffer = new kc.Color[][](resolution[0], resolution[1]);
+        lastFrameBuffer = new kc.Color[][](resolution[1], resolution[0]);
     }
 
     protected override void onAdd(Entity entity)

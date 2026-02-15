@@ -220,9 +220,10 @@ public abstract class MapEntitySystem(T) : System!T
 
                 foreach(y, ref chunkRow; chunk.data)
                 {
-                    chunkRow = new Entity[Map.chunkSize];
-                    chunkRow = map[j * Map.chunkSize + y]
-                     [i * Map.chunkSize .. i * Map.chunkSize + Map.chunkSize];
+                    immutable auto rowIndex = y + j * Map.chunkSize;
+                    assert(rowIndex < resolution[1], "Row index in initChunks is greater than resolution! Panic!");
+
+                    chunkRow = map[rowIndex][i * Map.chunkSize .. i * Map.chunkSize + Map.chunkSize];
                 }
             }
         }
@@ -247,7 +248,7 @@ public struct Map
     public @property int[2] resolution() pure const
     {
         int[2] resolution;
-        resolution = [cast(int) map.length, cast(int) map[0].length];
+        resolution = [cast(int) map[0].length, cast(int) map.length];
         return resolution;
     }
 
@@ -262,7 +263,6 @@ public struct Map
         }
 
         map.length = mapSize[1];
-
         foreach(y, ref row; map)
         {
             row.length = mapSize[0];
@@ -277,7 +277,7 @@ public struct Map
         tempMap.length = mapSize[1];
         foreach(y, ref row; tempMap)
         {
-            row.length = mapSize[1];
+            row.length = mapSize[0];
 
             foreach(x, ref entity; row)
             {
