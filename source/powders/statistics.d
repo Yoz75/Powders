@@ -61,8 +61,7 @@ public final class ParticleInfoSystem : BaseSystem
             return;
         } 
 
-        immutable Entity particleUnderMouse = globalMap.getAt(mousePosition);
-
+        const Entity particleUnderMouse = globalMap.getAt(mousePosition);
         auto stringBuilder = appender!string();
 
         foreach(collector; infoCollectors)
@@ -81,18 +80,36 @@ public final class ParticleInfoSystem : BaseSystem
 private class TemperatureInfoCollector : IParticleInfoCollector
 {
     import powders.particle.temperature;
+
+    private IComponentPool!Temperature temperaturePool;
+
+    public this()
+    {
+        import kernel.simulation;
+        temperaturePool = Simulation.currentWorld.getPoolOf!Temperature();
+    }
+
 public:
     string getInfo(const Entity entity)
     {
         import std.conv : to;
 
-        immutable Temperature temperature = entity.getComponent!Temperature();
+        immutable Temperature temperature = temperaturePool.getComponent(entity.id);
         return "Temperature: " ~ temperature.value.to!string ~ "*C";
     }
 }
 
 private class TypeNameCollector : IParticleInfoCollector
 {
+    import powders.particle.basics;
+    import kernel.simulation;
+    private IComponentPool!Particle particlePool;
+
+    public this()
+    {
+        particlePool = Simulation.currentWorld.getPoolOf!Particle;
+    }
+
     import powders.particle.temperature;
 public:
     string getInfo(const Entity entity)
@@ -100,12 +117,12 @@ public:
         import powders.particle.basics : Particle;
         import std.conv : to;
 
-        if(!entity.hasComponent!Particle())
+        if(!particlePool.hasComponent(entity.id))
         {
             return "Nothing";
         }
 
-        immutable Particle particle = entity.getComponent!Particle();
+        immutable Particle particle = particlePool.getComponent(entity.id);
         return particle.typeId.dup;
     }
 }

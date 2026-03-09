@@ -14,223 +14,6 @@ public:
     int[2] xy;
 }
 
-/// System that Processes entities on the global map
-public abstract class MapEntitySystem(T) : System!T
-{
-    public enum ChunkState
-    {
-        dirty,
-        becomeDirty,
-        clean
-    }
-
-    public struct Chunk
-    {
-    public:
-        ChunkState state = ChunkState.dirty;
-        Entity[][] data;
-
-        void makeDirty()
-        {
-            state = ChunkState.becomeDirty;
-        }
-
-        void makeClean()
-        {
-            if(state == ChunkState.becomeDirty) return;
-            state = ChunkState.clean;
-        }
-
-        pure bool isDirty() inout
-        {
-            return state != ChunkState.clean;
-        }
-
-        pure bool isClean() inout
-        {
-            return state == ChunkState.clean;
-        }
-
-        /// Convert world position to chunk index in table
-        /// Params:
-        ///   worldPosition = world position
-        /// Returns: index of chunk containing the world position
-        pure static int[2] world2ChunkIndex(int[2] worldPosition)
-        {
-            return [worldPosition[0] / Map.chunkSize, worldPosition[1] / Map.chunkSize];
-        }
-
-        /// Convert chunk index and position in chunk to world position
-        /// Params:
-        ///   chunkIndex = index of chunk in table
-        ///   chunkPosition = chunk-related position
-        /// Returns: 
-        pure static int[2] chunk2WorldPosition(int[2] chunkIndex, int[2] chunkPosition)
-        {
-            return [chunkIndex[0] * Map.chunkSize + chunkPosition[0],
-                    chunkIndex[1] * Map.chunkSize + chunkPosition[1]];
-        }
-    }
-
-    protected Chunk[][] chunks;
-    private Chunk[][] tempChunks;
-    protected bool isPausable = true;
-
-    /// Call before update or not? Enable this only if you REALLY need it.
-    protected bool useBeforeUpdate = false;
-
-    /// Call update or not? Enable this only if you REALLY need it.
-    protected bool useUpdate = true;
-
-    /// Call after update or not? Enable this only if you REALLY need it.
-    protected bool useAfterUpdate = false;
-
-    public this()
-    {
-        super();
-
-        assert(globalMap != Map.init, "MapEntitySystem is being initialized before globalMap is initialized!");
-
-        initChunks(chunks, globalMap.map);
-        initChunks(tempChunks, globalMap.tempMap);
-
-        globalMap.onFinalizeTick ~= &swapChunks;
-    }
-
-    public override void onUpdated()
-    {
-        if(globalGameState == GameState.pause && isPausable)
-        {
-            return;
-        }
-
-        foreach(j, row; chunks)
-        {
-            foreach(i, ref chunk; row)
-            {
-                if(chunk.state == ChunkState.clean) continue;
-                else if(chunk.state == ChunkState.becomeDirty)
-                {
-                    chunk.state = ChunkState.dirty;
-                }                
-
-                if(useBeforeUpdate)
-                {
-                    foreach(y, chunkRow; chunk.data)
-                    {
-                        foreach(x, entity; chunkRow)
-                        {
-                            if(!entity.hasComponent!T()) continue;
-
-                            ref T component = entity.getComponent!T();
-                            beforeUpdateComponent(entity, chunk, component);
-                        }
-                    }
-                }
-
-                if(useUpdate)
-                {
-                    foreach(y, chunkRow; chunk.data)
-                    {
-                        foreach(x, entity; chunkRow)
-                        {
-                            if(!entity.hasComponent!T()) continue;
-
-                            ref T component = entity.getComponent!T();
-                            updateComponent(entity, chunk, component);
-                        }
-                    }
-                }
-
-                if(useAfterUpdate)
-                {
-                    foreach(y, chunkRow; chunk.data)
-                    {
-                        foreach(x, entity; chunkRow)
-                        {
-                            if(!entity.hasComponent!T()) continue;
-
-                            ref T component = entity.getComponent!T();
-                            afterUpdateComponent(entity, chunk, component);
-                        }
-                    }
-                }
-            }
-        } 
-    }
-
-    /// Mark the chunk of `entity` as dirty
-    /// Params:
-    ///   entity = the entity, made chunk dirty
-    public void markDirty(Entity entity)
-    {
-        immutable int[2] position = entity.getComponent!Position().xy;
-        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
-
-        chunks[chunkIndex[1]][chunkIndex[0]].makeDirty();
-    }
-
-    /// Mark the chunk of `entity` as clean
-    /// Params:
-    ///   entity = the entity, made chunk clean
-    public void markClean(Entity entity)
-    {
-        immutable int[2] position = entity.getComponent!Position().xy;
-        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
-        chunks[chunkIndex[1]][chunkIndex[0]].makeClean();
-    }
-
-    /// Method, that's being called before updating component. Default implementation disables self updating
-    protected void beforeUpdateComponent(Entity entity, ref Chunk chunk, ref T component) 
-    {
-        useBeforeUpdate = false;
-    }
-
-    /// Method, that's being called on updating component. Default implementation disables self updating
-    protected void updateComponent(Entity entity, ref Chunk chunk, ref T component)
-    {
-        useUpdate = false;
-    }
-
-    /// Method, that's being called after updating component. Default implementation disables self updating
-    protected void afterUpdateComponent(Entity entity, ref Chunk chunk, ref T component) 
-    {
-        useAfterUpdate = false;
-    }
-
-    private void swapChunks()
-    {
-        auto temp = chunks;
-        chunks = tempChunks;
-        tempChunks = temp;
-    }
-
-    private void initChunks(ref Chunk[][] chunks, Entity[][] map)
-    {
-        immutable int[2] resolution = globalMap.resolution;
-
-        chunks = new Chunk[][resolution[1] / Map.chunkSize];
-        foreach(j, ref row; chunks)
-        {
-            row = new Chunk[resolution[0] / Map.chunkSize];
-
-            foreach(i, ref chunk; row)
-            {
-                chunk.data = new Entity[][Map.chunkSize];
-
-                foreach(y, ref chunkRow; chunk.data)
-                {
-                    immutable auto rowIndex = y + j * Map.chunkSize;
-                    assert(rowIndex < resolution[1], "Row index in initChunks is greater than resolution! Panic!");
-
-                    chunkRow = map[rowIndex][i * Map.chunkSize .. i * Map.chunkSize + Map.chunkSize];
-                }
-            }
-        }
-    }
-}
-
-
 alias FinaizeTickAction = void delegate();
 
 public struct Map
@@ -243,6 +26,8 @@ public struct Map
 
     private Entity[][] map;
     private Entity[][] tempMap; 
+
+    private IComponentPool!Position positionPool;
 
     /// The resolution of map, [x, y]
     public @property int[2] resolution() pure const
@@ -263,6 +48,7 @@ public struct Map
         }
 
         map.length = mapSize[1];
+        positionPool = Simulation.currentWorld.getPoolOf!Position();
         foreach(y, ref row; map)
         {
             row.length = mapSize[0];
@@ -270,7 +56,8 @@ public struct Map
             foreach(x, ref entity; row)
             {
                 entity = Entity.create(Simulation.currentWorld);
-                entity.addComponent!Position(Position([cast(int) x, cast(int) y]));
+                
+                positionPool.addComponent(entity.id, Position([cast(int) x, cast(int) y]));
             }
         }
 
@@ -356,15 +143,18 @@ public struct Map
     /// Swap two entities on the map and update their Position components
     public void swap(Entity first, Entity second)
     {
-        ref Position firstPos = first.getComponent!Position();
-        ref Position secondPos = second.getComponent!Position();
-        Position temp = firstPos;     
+        Position firstPos = positionPool.getComponent(first.id);
+        Position secondPos = positionPool.getComponent(second.id);
+        Position temp = firstPos;
 
         tempMap[firstPos.xy[1]][firstPos.xy[0]] = second;
         tempMap[secondPos.xy[1]][secondPos.xy[0]] = first;
 
         firstPos.xy[] = secondPos.xy[];
         secondPos.xy[] = temp.xy[];
+
+        positionPool.addComponent(first.id, firstPos);
+        positionPool.addComponent(second.id, secondPos);
     }
     
     /// Finalize the tick, apply all changes made to the map

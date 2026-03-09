@@ -3,134 +3,280 @@ module kernel.ecs;
 
 import std.bitmanip : BitArray;
 import kernel.optional;
+import dlib.container.array;
 
 /// List of all systems in the simulation
 BaseSystem[] systems;
 
 alias Id = size_t;
-alias onRemoveAction = void delegate(Entity entity);
-alias onAddAction = void delegate(Entity entity);
+alias onRemoveAction(T) = void delegate(IEventComponentPool!T pool, Id entityId);
+alias onAddAction(T) = void delegate(IEventComponentPool!T pool, Id entityId);
 
-/// Component pool for entities in the simulation
-public struct ComponentPool(T)
+public interface IComponentPool(T)
 {
-    public static ComponentPool!T instance;
-
-    T[][] data;
-    // is entity [worldId][i] has this component or not?
-    private BitArray[] entitiesHasTable;
-
-    private onAddAction[] onAddDelegates;
-    private onRemoveAction[] onRemoveDelegates;
-
-    /// Reserve space for components in the world
+    /// add component to entity or set it to a new value
     /// Params:
-    ///   world = the world
-    ///   componentsCount = count of reserved components 
-    public void reserve(World world, size_t componentsCount)
-    {
-        // tryExtendData works with entitirs, so we make a kostyl
-        if(world.id >= data.length)
-        {
-            data.length = world.id + 1;
-        }
+    /// entity = the entity
+    /// value = the initial value
+    void addComponent(Id entityId, T value);
 
-        if(world.id >= entitiesHasTable.length)
-        {
-            entitiesHasTable.length = world.id + 1;
-        }
-
-        data[world.id].reserve(componentsCount);
-
-        entitiesHasTable[world.id].length = data[world.id].length;         
-    }
-
-    /// Add component to entity
+    /// Remove component from entity. Does nothing, if there's no such component
     /// Params:
-    ///   entity = the entity
-    ///   value = the value of added component
-    public void addComponent(Entity entity, T value)
-    {
-        tryExtendData(entity);
+    /// entity = the entity
+    void removeComponent(Id entityId);
 
-        data[entity.world.id][entity.id] = value;
-        entitiesHasTable[entity.world.id][entity.id] = true;
-
-        foreach(onAddDelegate; onAddDelegates)
-        {
-            onAddDelegate(entity);
-        }
-    }
-
-    /// Remove component from entity. If entity already doesn't have this component, nothing will happen
+    /// Check if entity has this component
     /// Params:
-    ///   entity = the entity
-    public void removeComponent(Entity entity)
-    {
-        tryExtendData(entity);
-        data[entity.world.id][entity.id] = T.init;
-        entitiesHasTable[entity.world.id][entity.id] = false;
+    /// entity = the entity (very informational tip haha)
+    /// Returns: true if entity has component, false if not
+    bool hasComponent(Id entityId);
 
-        foreach (onRemove; onRemoveDelegates)
+    /// Get all active components. If an entity doesn't have this component, it won't be included.
+    /// Returns: the array of currently active components
+    T[] getComponents();
+
+    ref T getComponent(Id entityId);
+
+    public T[] where(scope whereDelegate!T dg);
+}
+
+public interface IEventComponentPool(T) : IComponentPool!T
+{
+    /// Add event listener for adding component. This is needed for events, because they are added and removed in the same frame, so marker components can't be used
+    /// Params:
+    ///   action = the delegate, that will be called when component will be added. It takes an entity as parameter
+    void addOnAddAction(scope onAddAction!T action);
+
+    /// Add event listener for removing component. This is needed for events, because they are added and removed in the same frame, so marker components can't be used
+    /// Params:
+    ///   action = the delegate, that will be called when component will be removed. It takes an entity as parameter
+    void addOnRemoveAction(scope onRemoveAction!T action);
+}
+
+/// Get array of components of type T, if their entities have components THas...
+/// Usage:
+/// ------------
+/// mixin whereHasMany!(MainA, HasB, HasC, HasD);
+/// mixin whereHasMany!(MainB, HasE, HasF);
+/// 
+/// MainA[] dataA = whereHas(mainAPool, hasAPool, hasBPool, hasCPool);
+/// MainB[] dataB = whereHas(mainBPool, hasDPool, hasEPool);
+/// ------------
+/// Returns: array of components of type T, that satisfy condition. May be empty
+public mixin template whereHasMany(T, THas...)
+{
+    string __variadic2Pools(T...)() 
+    {
+        import std.string;
+        string result;
+
+        static foreach(i, TType; T)
         {
-            onRemove(entity);
+            result ~= "IComponentPool!" ~ TType.stringof ~ " " ~ TType.stringof.toLower() ~ "Pool, ";
         }
-    }
-    
-    public void addOnRemoveAction(scope onRemoveAction action)
-    {
-        onRemoveDelegates ~= action;
+
+        result = result[0..$-2]; // remove last ", "
+
+        return result;
     }
 
-    public void addOnAddAction(scope onAddAction action)
+    mixin("T[] whereHas(IComponentPool!T dataPool, " ~ __variadic2Pools!(THas)() ~ ")" ~
+    q{{
+        bool has(Id entityId, T data)
+        {
+            import std.string;
+            static foreach(i, THasType; THas)
+            {
+                if(!mixin(THasType.stringof.toLower() ~ "Pool.hasComponent(entityId)")) return false;
+            }
+
+            return true;
+        }
+
+        return dataPool.where(&has);
+    }});
+}
+
+public T[] whereHas(T, THas)(IComponentPool!T dataPool, IComponentPool!THas hasPool)
+{
+    bool has(Id entityId, T data)
+    {   
+        return hasPool.hasComponent(entityId);
+    }
+
+    return dataPool.where(&has);
+}
+
+public alias whereDelegate(T) = bool delegate(Id entityId, T data);
+
+public class DenseComponentPool(T, size_t entityReserve = 1024, size_t componentReserve = 128) 
+    : IEventComponentPool!T
+{
+    /// Index is an entity id, value is an index in denseData array, or -1 if entity doesn't have this component
+    private Array!(ptrdiff_t, entityReserve) sparce;
+
+    /// Index in dense data -> index in entity2ID data
+    private Array!(Id, componentReserve) denseSparce;
+
+    /// The real data array. Index is an index in entity2Id array, value is a component value
+    private Array!(T, componentReserve) denseData;
+
+    private onAddAction!T[] onAddDelegates;
+    private onRemoveAction!T[] onRemoveDelegates;
+
+public:
+
+    this()
+    {
+        sparce.resize(entityReserve, -1);
+    }
+
+    ~this()
+    {
+        sparce.free();
+        denseData.free();
+        denseSparce.free();
+    }
+
+    /// add component to entity
+    /// Params:
+    /// entity = the entity
+    /// value = the initial value
+    void addComponent(Id entityId, T value)
+    {
+        ensureSparceBounds(entityId);
+
+        immutable index = sparce[entityId];
+        if(index >= 0) 
+        {
+            denseData[index] = value;
+            return;
+        }
+
+        // current length is index of new element!
+        immutable newIndex = denseData.length;
+        denseData.insertBack(value);
+        denseSparce.insertBack(entityId);
+        
+        sparce[entityId] = newIndex;
+
+        foreach(dg; onAddDelegates)
+            dg(this, entityId);
+    }
+
+    /// Remove component from entity. Does nothing, if there's no such component
+    /// Params:
+    /// entity = the entity
+    void removeComponent(Id entityId)
+    {
+        if(entityId >= sparce.length)
+        return;
+
+        immutable index = sparce[entityId];
+        if(index < 0) return;
+
+        immutable lastIndex = denseData.length - 1;
+        immutable lastEntity = denseSparce[lastIndex];
+
+        // swap data
+        denseData[index] = denseData[lastIndex];
+
+        // update entity mapping
+        sparce[lastEntity] = index;
+        denseSparce[index] = lastEntity;
+
+        denseData.removeBack(1);
+        denseSparce.removeBack(1);
+
+        sparce[entityId] = -1;
+
+        foreach(dg; onRemoveDelegates)
+            dg(this, entityId);
+    }
+
+    /// Check if entity has this component
+    /// Params:
+    /// entity = the entity (very informational tip haha)
+    /// Returns: true if entity has component, false if not
+    bool hasComponent(Id entityId)
+    {   
+        if(entityId >= sparce.length) return false;
+        return sparce[entityId] >= 0;
+    } 
+
+    /// Get all active components. If an entity doesn't have this component, it won't be included.
+    /// Returns: the array of currently active components
+
+    T[] getComponents() 
+    {
+        return denseData.data();
+    }
+
+    ref T getComponent(Id entityId)
+    {
+        import std.conv : to;
+        
+        if(entityId >= sparce.length)
+            throw new Exception("Entity " ~ entityId.to!string ~ "doesn`t have component of type" ~ T.stringof);
+
+        immutable denseId = sparce[entityId];
+
+        if(denseId < 0) 
+        {
+            throw new Exception("There is no a component of type " ~ T.stringof ~ 
+             " attached to entity with id " ~ entityId.to!string);
+        }
+
+        /// We can't get adress of op index (cuz it's rvalue) so we just get slice and then index it
+        return denseData.data[sparce[entityId]];
+    }
+
+    /// Add event listener for adding component. This is needed for events, because they are added and removed in the same frame, so marker components can't be used
+    /// Params:
+    ///   action = the delegate, that will be called when component will be added. It takes an entity as parameter
+    void addOnAddAction(scope onAddAction!T action)
     {
         onAddDelegates ~= action;
     }
 
-    /// Get component for entity
+    /// Add event listener for removing component. This is needed for events, because they are added and removed in the same frame, so marker components can't be used
     /// Params:
-    ///   entity = the entity
-    /// Returns: the component value. Check if this value valid with `hasComponent`` method
-    // when error is true
-    public ref T getComponent(Entity entity)
+    ///   action = the delegate, that will be called when component will be removed. It takes an entity as parameter
+    void addOnRemoveAction(scope onRemoveAction!T action)
     {
-        tryExtendData(entity);
-        return data[entity.world.id][entity.id];
+        onRemoveDelegates ~= action;
     }
 
-    public bool hasComponent(Entity entity)
+    /// Apply delegate `dg` for each component of component pool and include them into returned array, if dg returned true
+    /// Params:
+    ///   dataPool = the data pool
+    ///   dg = the delegate that desides to include components into the result array
+    /// Returns: array of components, selected by `dg` (may be empty)
+    T[] where(scope whereDelegate!T dg)
     {
-        tryExtendData(entity);
+        T[] result;
+        result.reserve(denseData.length);
 
-        return entitiesHasTable[entity.world.id][entity.id];
+        auto data = denseData.data;
+
+        foreach(i, value; data)
+        {           
+            Id index = denseSparce[i];     
+            if(dg(index, value))
+            {
+                result ~= value;
+            }
+        }
+
+        return result;
     }
 
-    /// Try to extend data and has table if they are too short
-    /// (this name is bad, it it neetds to be renamed)
-    /// Params:
-    ///   entity = the entity
-    pragma(inline, true)
-    private void tryExtendData(Entity entity)
+    private void ensureSparceBounds(Id entityId)
     {
-        if (entity.world.id >= entitiesHasTable.length)
+        enum increaseCoefficient = 2;
+        if(entityId >= sparce.length)
         {
-            entitiesHasTable.length = entity.world.id + 1;
-        }
-        if (entity.world.id >= data.length)
-        {
-            data.length = entity.world.id + 1;
-        }
-
-        const ref BitArray worldHasTable = entitiesHasTable[entity.world.id];
-        const ref T[] worldDataTable = data[entity.world.id];
-
-        if (entity.id >= worldHasTable.length)
-        {
-            entitiesHasTable[entity.world.id].length = entity.id + 1;
-        }
-        if (entity.id >= worldDataTable.length)
-        {
-            data[entity.world.id].length = entity.id + 1;
+            sparce.resize((entityId + 1) * increaseCoefficient, -1);
         }
     }
 }
@@ -149,57 +295,10 @@ public struct Entity
         return Entity(world, world.totalEntities_++);
     }
 
-    public @property Id id() => id_;
-
-pragma(inline, true):
-
-    /// Shortcut for ComponentPool!T.instance.addComponent. See ComponentPool.addComponent
-    public void addComponent(T)(T value) inout
+    public @property Id id() inout 
     {
-        ComponentPool!T.instance.addComponent(this, value);
-    }    
-
-    /// Add a bundle of components. This method adds all fields of T as separated components with default init value
-    public void addBundle(T)() inout
-    {
-        import std.traits: Fields;
-
-        static foreach(TField; Fields!T)
-        {
-            addComponent!TField(TField.init);
-        }
+        return id_;
     }
-
-    /// Remove a bundle of components. This method removes all fields of T as separated components
-    public void removeBundle(T)() inout
-    {
-        import std.traits: Fields;
-
-        static foreach(TField; Fields!T)
-        {
-            removeComponent!TField();
-        }
-    }
-
-    /// Shortcut for ComponentPool!T.instance.getComponent. See ComponentPool.getComponent
-    public ref T getComponent(T)() inout
-    {
-        return ComponentPool!T.instance.getComponent(this);
-    }
-
-    /// Shortcut for ComponentPool!T.instance.hasComponent. See ComponentPool.hasComponent
-    public bool hasComponent(T)() inout
-    {
-        return ComponentPool!T.instance.hasComponent(this);
-    }
-
-    /// Shortcut for ComponentPool!T.instance.removeComponent. See ComponentPool.removeComponent
-    public void removeComponent(T)() inout
-    {
-        return ComponentPool!T.instance.removeComponent(this);
-    }
-
-pragma(inline):
 }
 
 /// Factory class for all systems. Create new systems using this factory
@@ -277,18 +376,39 @@ public abstract class BaseSystem
 public abstract class System(T) : BaseSystem
 {    
     public static System!T instance;
+    private IEventComponentPool!T[] notifiers;
 
     public this()
     {
         instance = this;
-        ComponentPool!T.instance.addOnRemoveAction(&onRemove);
-        ComponentPool!T.instance.addOnAddAction(&onAdd);
+    }
+
+    /// Add pool, that notifies our system about such events, that would be diffcult to implement using marker-components
+    /// Params:
+    ///   pool = 
+    protected final void addNotifierPool(IEventComponentPool!T pool)
+    {
+        notifiers ~= pool;
+    }
+
+    protected final void removeNotifierPool(IEventComponentPool!T pool)
+    {
+        import std.algorithm.mutation;
+        
+        foreach(i, notifier; notifiers)
+        {
+            if(notifier is pool)
+            {
+                notifiers.remove(i);
+                break;
+            }
+        }
     }
 
     /// Calls when T component was added to entity
     /// Params:
     ///   entity = the entity
-    protected void onAdd(Entity entity)
+    protected void onAdd(IEventComponentPool!T pool, Entity entity)
     {
         //nothing
     }
@@ -296,25 +416,37 @@ public abstract class System(T) : BaseSystem
     /// Calls when T component was removed from entity
     /// Params:
     ///   entity = the entity
-    protected void onRemove(Entity entity)
+    protected void onRemove(IComponentPool!T pool, Entity entity)
     {
         //nothing
     }
 }
 
-public struct World
+public class World
 {
-    public static World create()
-    {
-        static Id lastId;
-
-        return World(lastId++);
-    }
-
     // private, but everything is public within a single module
     private size_t totalEntities_;
     private Id id_;
 
+    private Object[string] componentPools;
+
     public @property size_t totalEntities() => totalEntities_;
     public @property Id id() => id_;
+
+    /// Get component pool of type T. If it doesn't exist, it will be created. 
+    /// Tip for duraks: if you won't get pool of some type U within all lifetime of world, this pool won't be created.
+    /// Returns: 
+    public IEventComponentPool!T getPoolOf(T)()
+    {
+        const Object* pool = T.stringof in componentPools;
+
+        if(pool is null)
+        {
+            auto newPool = new DenseComponentPool!T();
+            componentPools[T.stringof] = newPool;
+            return newPool;
+        }
+
+        return cast(IEventComponentPool!T)(*pool);
+    }
 }

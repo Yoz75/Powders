@@ -40,16 +40,13 @@ public:
 /// Wireworld electricity system
 public class WWorldConductorSystem : System!WWorldConductor
 {
-    /// Action, that calls when particle became charged or uncharged
-    public void delegate(Entity entity)[] onUpdatedSparkle;
+    private IComponentPool!WWorldConductor wWorldPool;
+    private IComponentPool!Position positionPool;
     
     public override void onCreated()
     {
-        ComponentPool!WWorldConductor.instance.reserve(Simulation.currentWorld, globalMap.resolution[0] * globalMap.resolution[1]);
-        onUpdatedSparkle ~= (Entity self) 
-        {
-            (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
-        };
+        wWorldPool = Simulation.currentWorld.getPoolOf!WWorldConductor();
+        positionPool = Simulation.currentWorld.getPoolOf!Position();
 
         assert(RenderModeSystem.instance !is null, "Render mode system is not initialized but we add render mode!!!");
         RenderModeSystem.instance.addRenderMode(&wwConductor2Color, Keys.three);
@@ -59,12 +56,9 @@ public class WWorldConductorSystem : System!WWorldConductor
     {
         if(globalGameState != GameState.play) return;
 
-        ref data = ComponentPool!WWorldConductor.instance.data[Simulation.currentWorld.id];
+        WWorldConductor[] data = wWorldPool.getComponents();
         foreach(i, ref conductor; data)
         {
-            Entity entity = Entity(Simulation.currentWorld, i);
-            if(!entity.hasComponent!WWorldConductor) continue;  
-
             conductor.state = conductor.nextState;
         }
     }
@@ -73,25 +67,24 @@ public class WWorldConductorSystem : System!WWorldConductor
     {
         if(globalGameState != GameState.play) return;
 
-        ref data = ComponentPool!WWorldConductor.instance.data[Simulation.currentWorld.id];
+        /// Every particle has Position component so we can just get all components instead of filtering
+        WWorldConductor[] data = wWorldPool.getComponents();
+        Position[] positions = whereHas!(Position, WWorldConductor)(positionPool, wWorldPool);
+
         foreach(i, ref conductor; data)
         {
-            Entity entity = Entity(Simulation.currentWorld, i);
-            if(!entity.hasComponent!WWorldConductor) continue;
-
             conductor.state = conductor.nextState;
             if(conductor.state == ConductorState.nothing)
             {
-                auto neighbors = globalMap.getNeighborsAt(entity.getComponent!Position.xy);
+                auto neighbors = globalMap.getNeighborsAt(positions[i].xy);
 
                 ubyte headsCount;
                 foreach(row; neighbors)
                 {
                     foreach(neighbor; row)
                     {
-                        if(!neighbor.hasComponent!WWorldConductor) continue;
-
-                        ref WWorldConductor neighborConductor = neighbor.getComponent!WWorldConductor();
+                        if(!wWorldPool.hasComponent(neighbor.id)) continue;
+                        ref WWorldConductor neighborConductor = wWorldPool.getComponent(neighbor.id);
 
                         if(neighborConductor.state == ConductorState.head)
                         {
@@ -113,26 +106,25 @@ public class WWorldConductorSystem : System!WWorldConductor
 
             if(conductor.nextState != conductor.state)
             {
-                foreach(action; onUpdatedSparkle)
-                {
-                    action(entity);
-                }
+                import kernel.todo;
+                mixin TODO!"Do a marker component that tells render system to update color";
             }
         }
     }
 }
 
-public class WWorldSparkleSystem : MapEntitySystem!WWorldSparkle
+public class WWorldSparkleSystem : System!WWorldSparkle
 {
     import powders.particle.basics : Particle;
 
-    protected override void onAdd(Entity entity)
+    protected override void onAdd(IEventComponentPool!WWorldSparkle pool, Entity entity)
     {
-        isPausable = false;
-        if(!entity.hasComponent!WWorldConductor) return;
+        IComponentPool!WWorldConductor conductorPool = Simulation.currentWorld.getPoolOf!WWorldConductor();
+        if(!conductorPool.hasComponent(entity.id)) return;
 
-        entity.getComponent!WWorldConductor().state = ConductorState.head;
-        entity.getComponent!WWorldConductor().nextState = ConductorState.head;
+        ref WWorldConductor sparkle = conductorPool.getComponent(entity.id);
+        sparkle.state = ConductorState.head;
+        sparkle.nextState = ConductorState.head;
     }
 }
 
@@ -140,8 +132,11 @@ public Color wwConductor2Color(Entity entity)
 {
     import davincilib.color;
 
-    if(!entity.hasComponent!WWorldConductor) return entity.getComponent!MapRenderable().color;
-    immutable auto conductor = entity.getComponent!WWorldConductor();
+    IComponentPool!WWorldConductor conductorPool = Simulation.currentWorld.getPoolOf!WWorldConductor();
+    IComponentPool!MapRenderable renderablePool = Simulation.currentWorld.getPoolOf!MapRenderable();
+
+    if(!conductorPool.hasComponent(entity.id)) return renderablePool.getComponent(entity.id).color;
+    immutable auto conductor = conductorPool.getComponent(entity.id);
 
     final switch(conductor.state)
     {
@@ -152,7 +147,7 @@ public Color wwConductor2Color(Entity entity)
             return red;
 
         case ConductorState.nothing:
-            return entity.getComponent!MapRenderable().color;
+            return renderablePool.getComponent(entity.id).color;
     }
 
     return black; // should never happen

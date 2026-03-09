@@ -1,7 +1,9 @@
 /// The module, in witch described all components and sistems
 module powders.particle.basics;
 
+import kernel.todo;
 import kernel.ecs;
+import kernel.simulation;
 import powders.map;
 import powders.particle.register;
 import powders.io;
@@ -88,37 +90,49 @@ public:
     }
 }
 
-public class MovableSystem : MapEntitySystem!Movable
+public class MovableSystem : System!Movable
 {
     /// Calls when `self` moved and swapped with `other`
     public void delegate(Entity self, Entity other)[] onMoved;
 
+    private IComponentPool!Movable movablePool;
+    private IComponentPool!Position positionPool;
+    private IComponentPool!Particle particlePool;
+
     public override void onCreated()
     {
-        onMoved ~= (Entity self, Entity other) 
-        {
-            (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
-            (cast(RenderableSystem) RenderableSystem.instance).markDirty(other);
-        };
+        movablePool = Simulation.currentWorld.getPoolOf!Movable();
+        positionPool = Simulation.currentWorld.getPoolOf!Position();
+        particlePool = Simulation.currentWorld.getPoolOf!Particle();
     }
 
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Movable movable)
+    protected override void onUpdated()
+    {
+        import std.random;
+
+        Movable[] movables = whereHas(movablePool, positionPool);
+        Position[] positions = whereHas(positionPool, movablePool);
+
+        foreach(i, ref movable; movables)
+        {
+            updateComponent(movable, positions[i]);
+        }
+    }
+
+    pragma(inline, true)
+    private void updateComponent(ref Movable movable, ref Position position)
     {
         import std.math : round;
         import std.algorithm : clamp;
 
         movable.isFalling = true;
-        auto currentPosition = entity.getComponent!Position().xy;
+        auto currentPosition = position.xy;
 
         if (movable.velocity[0] == 0 && movable.velocity[1] == 0)
             return;
 
         movable.velocity[0] = movable.velocity[0].clamp(-Movable.maxVelocity, Movable.maxVelocity);
-        movable.velocity[1] = movable.velocity[1].clamp(-Movable.maxVelocity, Movable.maxVelocity);
-
-        (cast(PowderSystem) PowderSystem.instance).markUpdated(entity);
-        (cast(AdhesionSystem) AdhesionSystem.instance).markUpdated(entity);
-        
+        movable.velocity[1] = movable.velocity[1].clamp(-Movable.maxVelocity, Movable.maxVelocity);        
 
         int[2] roundedVelocity = [cast(int) movable.velocity[0], cast(int) movable.velocity[1]];
 
@@ -135,7 +149,8 @@ public class MovableSystem : MapEntitySystem!Movable
             return;
         }
 
-        immutable Entity other = globalMap.getAt(finalPosition);
+        Entity entity = globalMap.getAt(position.xy);
+        Entity other = globalMap.getAt(finalPosition);
 
         globalMap.swap(entity, other);
 
@@ -171,7 +186,7 @@ public class MovableSystem : MapEntitySystem!Movable
             int y = cast(int) (start[1] + stepY * i);
             int[2] checkPos = [x, y];
 
-            if (globalMap.getAt(checkPos).hasComponent!Particle())
+            if(particlePool.hasComponent(globalMap.getAt(checkPos).id))
                 break;
 
             lastFree = checkPos;
@@ -185,18 +200,22 @@ public class GravitySystem : System!Gravity
 {
     import kernel.simulation;
 
+    private IComponentPool!Movable movablePool;
+    private IComponentPool!Gravity gravityPool;
+
+    public override void onCreated()
+    {
+        movablePool = Simulation.currentWorld.getPoolOf!Movable();
+        gravityPool = Simulation.currentWorld.getPoolOf!Gravity();
+    }
+
     protected override void onUpdated()
     {
-        auto ref data = ComponentPool!Movable.instance.data[Simulation.currentWorld.id];
-
+        Movable[] data = whereHas(movablePool, gravityPool);
+        
         foreach(i, ref movable; data)
         {
-            Entity entity = Entity(Simulation.currentWorld, i);
-
-            if(entity.hasComponent!Gravity())
-            {
-                movable.velocity[] += Gravity.direction[] * Gravity.gravity;
-            }
+            movable.velocity[] += Gravity.direction[] * Gravity.gravity;            
         }
     }
 }
@@ -230,44 +249,50 @@ public class ChangeGravitySystem : BaseSystem
     }
 }
 
-public class PowderSystem : MapEntitySystem!Powder
+public class PowderSystem : System!Powder
 {
-    private void markUpdated(Entity entity)
-    {
-        immutable int[2] position = entity.getComponent!Position().xy;
-        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
+    private IComponentPool!Powder powderPool;
+    private IComponentPool!Movable movablePool;
+    private IComponentPool!Position positionPool;
 
-        chunks[chunkIndex[1]][chunkIndex[0]].makeDirty();
+    public override void onCreated()
+    {
+        powderPool = Simulation.currentWorld.getPoolOf!Powder();
+        movablePool = Simulation.currentWorld.getPoolOf!Movable();
+        positionPool = Simulation.currentWorld.getPoolOf!Position();
     }
 
-    protected override void onAdd(Entity entity)
+    protected override void onUpdated()
     {
-        markUpdated(entity);
+        mixin whereHasMany!(Powder, Movable, Position);
+        mixin whereHasMany!(Movable, Powder, Position);
+        mixin whereHasMany!(Position, Powder, Movable);
+
+        Powder[] data = whereHas(powderPool, movablePool, positionPool);
+        Movable[] movableData = whereHas(movablePool, powderPool, positionPool);
+        Position[] positionData = whereHas(positionPool, powderPool, movablePool);
+
+        foreach(i, ref powder; data)
+        {
+            updateComponent(powder, movableData[i], positionData[i], i);
+        }
     }
 
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Powder powder)
+    pragma(inline, true)
+    private void updateComponent(ref Powder powder, ref Movable movable, ref Position position, Id entityId)
     {
         static uint fallDirection;
         fallDirection++;
 
-        chunk.makeClean();
-        if(!entity.hasComponent!Movable())
-        {
-            throw new Exception("Powder component can be only on Movable particles!");
-        }
-
-        immutable auto position = entity.getComponent!Position();
+        mixin TODO!"Fix this shit!";
+        /* at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
         immutable int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
-
-        // at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
         if(!globalMap.getAt(belowPosition).hasComponent!Particle)
         {
             return;
-        }
+        }*/
 
-        if(entity.getComponent!Movable().isFalling) return;
-
-        chunk.makeDirty();
+        if(movable.isFalling) return;
 
         /*
                -1 0 1
@@ -285,56 +310,13 @@ public class PowderSystem : MapEntitySystem!Powder
         ];
 
         // Every odd frame fall to one side and every even to the other
-        entity.getComponent!Movable.velocity = biases[Gravity.direction][fallDirection & 1];
+        movable.velocity = biases[Gravity.direction][fallDirection & 1];
     }
 }
 
-public class AdhesionSystem : MapEntitySystem!Adhesion
+public class AdhesionSystem : System!Adhesion
 {
-    import std.random;
-
-    private void markUpdated(Entity entity)
-    {
-        immutable int[2] position = entity.getComponent!Position().xy;
-        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
-
-        chunks[chunkIndex[1]][chunkIndex[0]].makeDirty();
-    }
-
-
-    protected override void onAdd(Entity entity)
-    {
-        markUpdated(entity);
-    }
-
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Adhesion adhesion)
-    {
-        chunk.makeClean();
-        if(!entity.hasComponent!Movable())
-        {
-            throw new Exception("Adhesion component can be only on Movable particles!");
-        }
-            
-        immutable auto position = entity.getComponent!Position();
-        immutable int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
-
-        // at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
-        if(!globalMap.getAt(belowPosition).hasComponent!Particle)
-        {
-            return;
-        }
-
-        if(entity.getComponent!Movable().isFalling) return;        
-
-        chunk.makeDirty();
-        /*
-               -1 0 1
-            -1 [][][]
-             0 []xx[]
-             1 [][][]
-        */
-        // should be int[2][2], but float[2][2] because of boilerplate
-        enum float[2][2][GravityDirection] direction2Biases = 
+    private immutable float[2][2][GravityDirection] direction2Biases = 
         [
             GravityDirection.none: [[0, 0], [0, 0]],
             GravityDirection.down: [[-1, 0], [1, 0]],
@@ -343,6 +325,41 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
             GravityDirection.up: [[-1, 0], [1, 0]]
         ];
 
+    import std.random;
+
+    protected override void onUpdated()
+    {
+        auto data = whereHas!(Adhesion, Movable)(Simulation.currentWorld.getPoolOf!Adhesion(), Simulation.currentWorld.getPoolOf!Movable());
+        auto movableData = whereHas!(Movable, Adhesion)(Simulation.currentWorld.getPoolOf!Movable(), Simulation.currentWorld.getPoolOf!Adhesion());
+
+        foreach(i, ref adhesion; data)
+        {
+            updateComponent(adhesion, movableData[i]);
+        }
+    }
+
+    private void updateComponent(ref Adhesion adhesion, ref Movable movable)
+    {   
+        import std.traits : EnumMembers;
+
+        /*immutable int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
+        immutable auto position = entity.getComponent!Position();
+
+        // at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
+        if(!globalMap.getAt(belowPosition).hasComponent!Particle)
+        {
+            return;
+        }*/
+
+        if(movable.isFalling) return;        
+
+        /*
+               -1 0 1
+            -1 [][][]
+             0 []xx[]
+             1 [][][]
+        */
+        // should be int[2][2], but float[2][2] because of boilerplate
 
         float[2][2] resultBiases;
 
@@ -355,32 +372,53 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
             resultBiases = [0, 0];
         }
 
-        entity.getComponent!Movable().velocity = resultBiases[uniform(0, 2)];
+        movable.velocity = resultBiases[uniform(0, 2)];
     }
 }
 
-public class CombineSystem : MapEntitySystem!Combine
+public class CombineSystem : System!Combine
 {
-    protected override void updateComponent(Entity self, ref Chunk chunk, ref Combine combine)
+    private IComponentPool!Combine combinePool;
+    private IComponentPool!Particle particlePool;
+    private IComponentPool!Position positionPool;
+
+    public override void onCreated()
+    {
+        combinePool = Simulation.currentWorld.getPoolOf!Combine();
+        particlePool = Simulation.currentWorld.getPoolOf!Particle();
+        positionPool = Simulation.currentWorld.getPoolOf!Position();
+    }
+
+    protected override void onUpdated()
+    {
+        Combine[] data = whereHas!(Combine, Particle)(combinePool, particlePool);
+        Position[] positions = whereHas!(Position, Combine)(positionPool, combinePool);
+        Particle[] particles = whereHas!(Particle, Combine)(particlePool, combinePool);
+
+        foreach(i, ref combine; data)
+        {
+            updateComponent(combine, positions[i], particles[i]);
+        }
+    }
+
+    pragma(inline, true)
+    private void updateComponent(ref Combine combine, ref Position position, ref Particle particle)
     {
         import powders.particle.building;
         import powders.particle.register;
         import powders.particle.loading;
 
-        auto position = self.getComponent!Position().xy;
-
-        auto neighbors = globalMap.getNeighborsAt(position);
+        auto self = globalMap.getAt(position.xy);
+        auto neighbors = globalMap.getNeighborsAt(position.xy);
 
         foreach (row; neighbors)
         {
             foreach(entity; row)
             {
-                if(!entity.hasComponent!Particle) continue;
+                if(!particlePool.hasComponent(entity.id)) continue;
                 if(entity == self) continue;
 
-                immutable auto entityId = entity.getComponent!Particle().typeId;
-
-                if(combine.otherId == entityId)
+                if(combine.otherId == particle.typeId)
                 {
                     auto serializedResult = globalTypesDictionary[combine.resultId];
                     destroyParticle(self);

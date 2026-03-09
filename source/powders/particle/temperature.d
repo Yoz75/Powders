@@ -1,6 +1,7 @@
 module powders.particle.temperature;
 
 import kernel.ecs;
+import kernel.simulation;
 import powders.io;
 import powders.particle.register;
 import powders.particle.basics;
@@ -69,13 +70,36 @@ public:
     @JsonizeField TemperatureScalar delta;
 }
 
+public enum AgregateStates : ubyte
+{
+    solid,
+    liquid,
+    gas
+}
+
+public @Component(OnDestroyAction.destroy) struct AgregateState
+{
+    mixin MakeJsonizable;
+public:
+    ParticleId solid, melt, gas;
+    TemperatureScalar meltingPoint = 0, boilingPoint = 0;
+    AgregateStates state;
+
+    @JsonizeField this(string solid, string melt, string gas, TemperatureScalar meltingPoint, TemperatureScalar boilingPoint)
+    {
+        this.solid = solid;
+        this.melt = melt;
+        this.gas = gas;
+
+        this.meltingPoint = meltingPoint;
+        this.boilingPoint = boilingPoint;
+    }
+}
 
 import kernel.todo;
 mixin TODO!("Currently TemperatureSystem is broken when process ambient heat, fix later!");
 public class TemperatureSystem : System!Temperature
 {
-    public void delegate(Entity entity)[] onTemperatureChanged;
-
     private int[2] mapResolution;
 
     private IComputeShader temperatureShader;
@@ -84,17 +108,14 @@ public class TemperatureSystem : System!Temperature
     private Temperature[] valueInBuffer;
     private Temperature[] valueOutBuffer;
 
+    private IEventComponentPool!Temperature temperaturePool;
+
     /// Mark that entity was updated and it's chunk must be recomputed
 
     public override void onCreated()
     {
+        temperaturePool = Simulation.currentWorld.getPoolOf!Temperature;
         mapResolution = globalMap.resolution();
-
-        onTemperatureChanged ~= (Entity self) 
-        {
-            if(RenderModeSystem.instance.getCurrentRenderModeConverter() == &temperature2Color)
-                (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
-        };
 
         assert(RenderModeSystem.instance !is null, "Render mode system is not initialized but we add render mode!!!");
         RenderModeSystem.instance.addRenderMode(&temperature2Color, Keys.two);
@@ -111,10 +132,10 @@ public class TemperatureSystem : System!Temperature
 
     public void updateTemperatureOf(Entity entity)
     {
-        immutable auto mapPos = entity.getComponent!Position().xy;
+        immutable auto mapPos = Simulation.currentWorld.getPoolOf!Position().getComponent(entity.id).xy;
 
         Temperature[1] resultBuffer;
-        resultBuffer[0] = entity.getComponent!Temperature();
+        resultBuffer[0] = Simulation.currentWorld.getPoolOf!Temperature().getComponent(entity.id);
 
         valueInSSBO.update(resultBuffer, cast(uint)((mapPos[0] + mapResolution[0] * mapPos[1]) * Temperature.sizeof));
     }
@@ -127,13 +148,9 @@ public class TemperatureSystem : System!Temperature
         temperatureShader.free();
     }
 
-    protected override void onAdd(Entity entity)
+    protected override void onAdd(IEventComponentPool!Temperature pool, Entity entity)
     {
         updateTemperatureOf(entity);
-        foreach(action; onTemperatureChanged)
-        {
-            action(entity);
-        }
     }
 
     protected override void onUpdated()
@@ -144,10 +161,7 @@ public class TemperatureSystem : System!Temperature
         {
             foreach(entity; globalMap)
             {
-                foreach(action; onTemperatureChanged)
-                {
-                    action(entity);
-                }
+                mixin TODO!"Add some mark component for updating map state";
             }
 
             return;
@@ -161,15 +175,11 @@ public class TemperatureSystem : System!Temperature
         temperatureShader.execute([mapResolution[0] / Map.chunkSize, mapResolution[1] / Map.chunkSize, 1]);
         valueOutSSBO.read(valueOutBuffer);
 
-        foreach(x, y, entity; globalMap)
-        {
-            auto ref temperature = entity.getComponent!Temperature();
+        Temperature[] temperatureData = temperaturePool.getComponents();
 
-            temperature = valueOutBuffer[x + mapResolution[0] * y];
-            foreach(action; onTemperatureChanged)
-            {
-                action(entity);
-            }
+        foreach(i, ref temperature; temperatureData)
+        {
+            temperature = valueOutBuffer[i];
         }
 
         auto temp = valueInSSBO;
@@ -206,14 +216,24 @@ public class TemperatureSystem : System!Temperature
     }
 }
 
-public class DeltaTemperatureSystem : MapEntitySystem!DeltaTemperature
+public class DeltaTemperatureSystem : System!DeltaTemperature
 {
-    protected override void onAdd(Entity entity)
+    private IComponentPool!DeltaTemperature deltaPool;
+    private IComponentPool!Temperature temperaturePool;
+
+    public override void onCreated()
     {
-        ref DeltaTemperature delta = entity.getComponent!DeltaTemperature();
-        ref Temperature temperature = entity.getComponent!Temperature();
+        deltaPool = Simulation.currentWorld.getPoolOf!DeltaTemperature();
+        temperaturePool = Simulation.currentWorld.getPoolOf!Temperature();
+    }
+
+    protected override void onAdd(IEventComponentPool!DeltaTemperature pool, Entity entity)
+    {
+        DeltaTemperature delta = deltaPool.getComponent(entity.id);
+        ref Temperature temperature = temperaturePool.getComponent(entity.id);
 
         temperature.value += delta.delta;
+
         (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(entity);
     }
 }
@@ -240,7 +260,7 @@ public Color temperature2Color(Entity entity)
     enum veryHotColor = white;
     enum maxColor = white;
 
-    immutable auto temperature = entity.getComponent!Temperature().value;
+    immutable auto temperature = Simulation.currentWorld.getPoolOf!Temperature().getComponent(entity.id).value;
     Color color;
     
     if(temperature < 0)
@@ -302,3 +322,24 @@ public pure Color lerp(T)(immutable Color from, immutable Color to, immutable T 
 
     return result;
 }
+
+mixin TODO!("Uncomment this and fix after reworking kernel ecs system!");
+/*
+private class AgregateStateSystem : System!AgregateState
+{
+    protected override void onUpdated()
+    {
+        auto data = ComponentPool!AgregateState.instance.data[Simulation.currentWorld.id];
+        auto temperatureData = ComponentPool!Temperature.instance.data[Simulation.currentWorld.id];
+
+        foreach(i, ref agregateState; data)
+        {
+            Entity self = Entity(Simulation.currentWorld, i);
+            if(!self.hasComponent!AgregateState)
+
+            if(temperatureData[i].value > agregateState.meltingPoint && agregateState.state == AgregateStates.solid)
+            {
+            }
+        }
+    }
+}*/

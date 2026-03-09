@@ -2,6 +2,7 @@
 module powders.particle.init;
 
 import kernel.ecs;
+import kernel.simulation;
 import davincilib.color;
 import powders.map;
 import powders.rendering;
@@ -41,17 +42,20 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!WWorldSparkleSystem.create();
         immutable auto mapResolution = globalMap.resolution;
 
+        IComponentPool!Particle particlePool = Simulation.currentWorld.getPoolOf!Particle();
+        IComponentPool!Temperature temperaturePool = Simulation.currentWorld.getPoolOf!Temperature();
+        IComponentPool!MapRenderable renderablePool = Simulation.currentWorld.getPoolOf!MapRenderable();
+
         foreach (i; 0..mapResolution[0])
         {
             auto entity = globalMap.getAt([i, mapResolution[1] - 1]);
-            entity.addComponent!Particle(Particle.init);
-            entity.addComponent!Temperature(Temperature.init);
-            entity.getComponent!MapRenderable().color = white;
+            particlePool.addComponent(entity.id, Particle.init);
+            renderablePool.addComponent(entity.id, MapRenderable(white));
         }
 
         foreach(entity; globalMap)
         {
-            entity.addComponent!Temperature(Temperature.init);
+            temperaturePool.addComponent(entity.id, Temperature.init);
         }
 
         (cast(MovableSystem) MovableSystem.instance).onMoved ~= (Entity self, Entity other)

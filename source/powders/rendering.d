@@ -2,12 +2,19 @@ module powders.rendering;
 
 public import davincilib;
 import kernel.ecs;
+import kernel.simulation;
 import kc = davincilib.color;
 import kernel.jsonutil;
 import powders.map;
 import powders.particle.register;
 
 IWindow!(Sprite, Camera) gameWindow;
+
+/// Marker component that tells our game to update MapRenderable of this entity
+@Component(OnDestroyAction.destroy) public struct ShouldUpdateRenderableMarker
+{
+    mixin MakeJsonizable;
+}
 
 /// A thing, renderable on map
 @Component(OnDestroyAction.setInit) public struct MapRenderable
@@ -106,6 +113,9 @@ private final class MapRenderSystem : BaseSystem
     private Sprite mapSprite;
     private IBasicShader mapShader;
 
+    private IComponentPool!MapRenderable renderablePool;
+    private IComponentPool!ShouldUpdateRenderableMarker markerPool;
+
     public this()
     {
         instance = this;
@@ -116,11 +126,15 @@ private final class MapRenderSystem : BaseSystem
         import powders.particle.basics;
         mapSprite = Sprite.create(globalMap.resolution, kc.white);
 
+        renderablePool = Simulation.currentWorld.getPoolOf!MapRenderable();
+        markerPool = Simulation.currentWorld.getPoolOf!ShouldUpdateRenderableMarker();
+
         foreach (ref Entity entity; globalMap)
         {
             MapRenderable renderable;
             renderable.color = kc.black;
-            entity.addComponent!MapRenderable(renderable);
+            renderablePool.addComponent(entity.id, renderable);
+            markerPool.addComponent(entity.id, ShouldUpdateRenderableMarker.init);
         }
     }
 
@@ -134,76 +148,50 @@ private final class MapRenderSystem : BaseSystem
 /// Function type, that convert entity to color. E.g convert entity's temperature to color and etc
 alias renderModeConverter = kc.Color function(Entity entity);
 
-public final class RenderableSystem : MapEntitySystem!MapRenderable
+public final class RenderableSystem : System!MapRenderable
 {
+    private IComponentPool!MapRenderable renderablePool;
+    private IComponentPool!ShouldUpdateRenderableMarker renderableMarkerPool;
+    private IComponentPool!Position positionPool;
+
     private renderModeConverter currentRenderModeConverter;
-
-    /// A buffer, that contains prefious frame. It's needed to optimize updating.
-    private kc.Color[][] lastFrameBuffer;
-
-    /// Previous state of render mode. Needed to fix render modes after last optimization, bruh
-    private renderModeConverter lastRenderModeConverter;
 
     public override void onCreated()
     {
-        isPausable = false;
-
-        immutable int[2] resolution = globalMap.resolution;
-
-        lastFrameBuffer = new kc.Color[][](resolution[1], resolution[0]);
+        renderablePool = Simulation.currentWorld.getPoolOf!MapRenderable();
+        renderableMarkerPool = Simulation.currentWorld.getPoolOf!ShouldUpdateRenderableMarker();
+        positionPool = Simulation.currentWorld.getPoolOf!Position();
     }
 
-    protected override void onAdd(Entity entity)
+    protected override void onAdd(IEventComponentPool!MapRenderable pool, Entity entity)
     {
-        markDirty(entity);
+        renderableMarkerPool.addComponent(entity.id, ShouldUpdateRenderableMarker.init);
     }
 
-    protected override void onAfterUpdate()
+    protected override void onUpdated()
     {
-        if(lastRenderModeConverter != currentRenderModeConverter)
-        {
-            foreach(row; chunks)
-            {
-                foreach(ref chunk_; row)
-                {
-                    chunk_.makeDirty();
-                }
-            }
+        import kernel.simulation;
 
-            foreach(x, y, entity_; globalMap)
-            {
-                immutable auto color = currentRenderModeConverter(entity_);
-                lastFrameBuffer[y][x] = color;
-                MapRenderSystem.instance.mapSprite.setPixel([x, y], color);
-            }
+        mixin whereHasMany!(MapRenderable, Position, ShouldUpdateRenderableMarker);
+        mixin whereHasMany!(Position, MapRenderable, ShouldUpdateRenderableMarker);
+
+        MapRenderable[] updatedRenderables = whereHas(renderablePool, positionPool, renderableMarkerPool);
+
+        //all pareticles have map renderable so everything is ok
+        Position[] positions = whereHas(positionPool, renderablePool, renderableMarkerPool);
+
+        foreach(i, ref value; updatedRenderables)
+        {
+            immutable position = positions[i];
+            updateComponent(value, position);
         }
-            
-        super.onUpdated();
     }
 
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref MapRenderable renderable)
-    {
-        debug
-        {
-            bool hasPosition = entity.hasComponent!Position();
-            assert(hasPosition, "DEBUG: AT SOME REASON NOT EVERY ENTITY HAS A POSITION!!11!!1111111!!!!
-            KERNEL PANIC!11 SEGMENTATION FAULT (CORE ISN'T DAMPED)");
-        }
-
-        immutable auto position = entity.getComponent!Position();
-
-        if(lastFrameBuffer[position.xy[1]][position.xy[0]] == currentRenderModeConverter(entity)
-            && lastRenderModeConverter == currentRenderModeConverter)
-        {
-            chunk.makeClean();
-            return;
-        }
-
-        chunk.makeDirty();
-        lastRenderModeConverter = currentRenderModeConverter;
-
-        kc.Color color = lastFrameBuffer[position.xy[1]][position.xy[0]] = currentRenderModeConverter(entity);
-        
+    //pragma(inline, true)
+    private void updateComponent(ref MapRenderable renderable, Position position)
+    {        
+        auto entity = globalMap.getAt(position.xy);
+        kc.Color color = currentRenderModeConverter(entity);
         MapRenderSystem.instance.mapSprite.setPixel(position.xy, color);
     }
 }
@@ -325,7 +313,9 @@ public class RenderModeSystem : BaseSystem
 
     private static Color color2color(Entity entity)
     {
-        MapRenderable renderable = entity.getComponent!MapRenderable();
+        auto pool = Simulation.currentWorld.getPoolOf!MapRenderable();
+        
+        MapRenderable renderable = pool.getComponent(entity.id);
         return renderable.color;
     }
 }

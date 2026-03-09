@@ -3,6 +3,7 @@ module powders.particle.building;
 
 import kernel.todo;
 import kernel.ecs;
+import kernel.simulation;
 import powders.map : Position;
 import powders.rendering;
 import powders.particle.basics;
@@ -31,7 +32,7 @@ public void buildParticle(Entity entity, SerializedParticleType type)
                         {
                             Component particle;
                             particle.typeId = type.typeID;
-                            entity.addComponent!Component(particle);
+                            Simulation.currentWorld.getPoolOf!Component().addComponent(entity.id, particle);
                             break LSwitch;
                         }
 
@@ -40,7 +41,7 @@ public void buildParticle(Entity entity, SerializedParticleType type)
                         // (type, that contains this attribute) and parse it
                         Component component = 
                         fromJSONString!Component(type.components[Component.stringof]);
-                        entity.addComponent!Component(component);
+                        Simulation.currentWorld.getPoolOf!Component().addComponent(entity.id, component);
                     break LSwitch;
                 }
             }
@@ -49,12 +50,13 @@ public void buildParticle(Entity entity, SerializedParticleType type)
         }
     }
 
-    entity.getComponent!Particle().typeId = type.typeID;
+    mixin TODO!"if everythin breaks -- uncomment this!";
+    //entity.getComponent!Particle().typeId = type.typeID;
 }
 
 public void destroyParticle(Entity entity)
-{
-    immutable bool hasParticle = entity.hasComponent!Particle();
+{    
+    immutable bool hasParticle = Simulation.currentWorld.getPoolOf!Particle().hasComponent(entity.id);
 
     if(!hasParticle) return;
 
@@ -66,14 +68,15 @@ public void destroyParticle(Entity entity)
             {
                 enum componentAttribute = getComponentAttributeOf!(Component);
                 enum onDestroyAction = componentAttribute.onDestroyAction;
+                auto pool = Simulation.currentWorld.getPoolOf!Component();
 
                 static if(onDestroyAction == OnDestroyAction.destroy)
                 {
-                    entity.removeComponent!Component();
+                    pool.removeComponent(entity.id);
                 }
                 else static if(onDestroyAction == OnDestroyAction.setInit)
                 {
-                    entity.addComponent!Component(Component.init);
+                    pool.addComponent(entity.id, Component.init);
                 }
                 else static if(onDestroyAction == OnDestroyAction.keep)
                 {
