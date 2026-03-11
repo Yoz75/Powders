@@ -175,15 +175,17 @@ public final class RenderableSystem : System!MapRenderable
         mixin whereHasMany!(MapRenderable, Position, ShouldUpdateRenderableMarker);
         mixin whereHasMany!(Position, MapRenderable, ShouldUpdateRenderableMarker);
 
-        MapRenderable[] updatedRenderables = whereHas(renderablePool, positionPool, renderableMarkerPool);
+        ComponentId[] updatedRenderableIds = whereHas(renderablePool, positionPool, renderableMarkerPool);
 
         //all pareticles have map renderable so everything is ok
-        Position[] positions = whereHas(positionPool, renderablePool, renderableMarkerPool);
+        ComponentId[] positionIds = whereHas(positionPool, renderablePool, renderableMarkerPool);
 
-        foreach(i, ref value; updatedRenderables)
+        foreach(i, id; updatedRenderableIds)
         {
-            immutable position = positions[i];
-            updateComponent(value, position);
+            ref MapRenderable renderable = renderablePool.getComponentWithId(id);
+            ref Position position = positionPool.getComponentWithId(positionIds[i]);
+
+            updateComponent(renderable, position);
         }
     }
 

@@ -69,14 +69,16 @@ public class WWorldConductorSystem : System!WWorldConductor
 
         /// Every particle has Position component so we can just get all components instead of filtering
         WWorldConductor[] data = wWorldPool.getComponents();
-        Position[] positions = whereHas!(Position, WWorldConductor)(positionPool, wWorldPool);
+        ComponentId[] positionIds = whereHas!(Position, WWorldConductor)(positionPool, wWorldPool);
 
         foreach(i, ref conductor; data)
         {
+            ref Position position = positionPool.getComponentWithId(positionIds[i]);
+
             conductor.state = conductor.nextState;
             if(conductor.state == ConductorState.nothing)
             {
-                auto neighbors = globalMap.getNeighborsAt(positions[i].xy);
+                auto neighbors = globalMap.getNeighborsAt(position.xy);
 
                 ubyte headsCount;
                 foreach(row; neighbors)

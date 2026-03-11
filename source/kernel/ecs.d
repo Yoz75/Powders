@@ -9,6 +9,7 @@ import dlib.container.array;
 BaseSystem[] systems;
 
 alias Id = size_t;
+alias ComponentId = Id;
 alias onRemoveAction(T) = void delegate(IEventComponentPool!T pool, Id entityId);
 alias onAddAction(T) = void delegate(IEventComponentPool!T pool, Id entityId);
 
@@ -37,7 +38,18 @@ public interface IComponentPool(T)
 
     ref T getComponent(Id entityId);
 
-    public T[] where(scope whereDelegate!T dg);
+    /// Apply delegate `dg` for each component of component pool and include them into returned array, if dg returned true
+    /// Params:
+    ///   dataPool = the data pool
+    ///   dg = the delegate that desides to include components into the result array
+    /// Returns: Ids of components, selected by `dg` (may be empty)
+    public ComponentId[] where(scope whereDelegate!T dg);
+
+    /// Get component by it's unique ID
+    /// Params:
+    ///    id = the id of component
+    /// Returns: reference to the component
+    public ref T getComponentWithId(ComponentId id);
 }
 
 public interface IEventComponentPool(T) : IComponentPool!T
@@ -80,7 +92,7 @@ public mixin template whereHasMany(T, THas...)
         return result;
     }
 
-    mixin("T[] whereHas(IComponentPool!T dataPool, " ~ __variadic2Pools!(THas)() ~ ")" ~
+    mixin("ComponentId[] whereHas(IComponentPool!T dataPool, " ~ __variadic2Pools!(THas)() ~ ")" ~
     q{{
         bool has(Id entityId, T data)
         {
@@ -97,7 +109,7 @@ public mixin template whereHasMany(T, THas...)
     }});
 }
 
-public T[] whereHas(T, THas)(IComponentPool!T dataPool, IComponentPool!THas hasPool)
+public ComponentId[] whereHas(T, THas)(IComponentPool!T dataPool, IComponentPool!THas hasPool)
 {
     bool has(Id entityId, T data)
     {   
@@ -109,6 +121,8 @@ public T[] whereHas(T, THas)(IComponentPool!T dataPool, IComponentPool!THas hasP
 
 public alias whereDelegate(T) = bool delegate(Id entityId, T data);
 
+import kernel.todo;
+mixin TODO!"Add kernel.exceptions module, create such classes like NullException, ArgumentException etc; and replace all `Exception`s with new ones.";
 public class DenseComponentPool(T, size_t entityReserve = 1024, size_t componentReserve = 128) 
     : IEventComponentPool!T
 {
@@ -251,20 +265,20 @@ public:
     /// Params:
     ///   dataPool = the data pool
     ///   dg = the delegate that desides to include components into the result array
-    /// Returns: array of components, selected by `dg` (may be empty)
-    T[] where(scope whereDelegate!T dg)
+    /// Returns: Ids of components, selected by `dg` (may be empty)
+    ComponentId[] where(scope whereDelegate!T dg)
     {
-        T[] result;
+        Id[] result;
         result.reserve(denseData.length);
 
         auto data = denseData.data;
 
-        foreach(i, value; data)
+        foreach(denseId, ref value; data)
         {           
-            Id index = denseSparce[i];     
+            Id index = denseSparce[denseId];
             if(dg(index, value))
             {
-                result ~= value;
+                result ~= denseId;
             }
         }
 
@@ -278,6 +292,24 @@ public:
         {
             sparce.resize((entityId + 1) * increaseCoefficient, -1);
         }
+    }
+
+     /// Get component by it's unique ID
+    /// Params:
+    ///    id = the id of component
+    /// Returns: reference to the component
+    ref T getComponentWithId(ComponentId id)
+    {
+        debug
+        {
+            if(id < 0 || id > denseData.length)
+            {
+                import std.conv;
+                throw new Exception("Index of component id " ~ id.to!string ~ " went out of length " ~ denseData.length.to!string ~ " of dense array!");
+            }
+        }
+
+        return denseData.data[id];
     }
 }
 

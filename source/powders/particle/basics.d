@@ -110,12 +110,14 @@ public class MovableSystem : System!Movable
     {
         import std.random;
 
-        Movable[] movables = whereHas(movablePool, positionPool);
-        Position[] positions = whereHas(positionPool, movablePool);
+        ComponentId[] movableIds = whereHas(movablePool, positionPool);
+        ComponentId[] positionIds = whereHas(positionPool, movablePool);
 
-        foreach(i, ref movable; movables)
+        foreach(i, id; movableIds)
         {
-            updateComponent(movable, positions[i]);
+            ref Movable movable = movablePool.getComponentWithId(id);
+            ref Position position = positionPool.getComponentWithId(positionIds[i]);
+            updateComponent(movable, position);
         }
     }
 
@@ -211,11 +213,12 @@ public class GravitySystem : System!Gravity
 
     protected override void onUpdated()
     {
-        Movable[] data = whereHas(movablePool, gravityPool);
+        ComponentId[] movableIds = whereHas(movablePool, gravityPool);
         
-        foreach(i, ref movable; data)
+        foreach(id; movableIds)
         {
-            movable.velocity[] += Gravity.direction[] * Gravity.gravity;            
+            ref Movable movable = movablePool.getComponentWithId(id);
+            movable.velocity[] += Gravity.direction[] * Gravity.gravity;
         }
     }
 }
@@ -268,13 +271,17 @@ public class PowderSystem : System!Powder
         mixin whereHasMany!(Movable, Powder, Position);
         mixin whereHasMany!(Position, Powder, Movable);
 
-        Powder[] data = whereHas(powderPool, movablePool, positionPool);
-        Movable[] movableData = whereHas(movablePool, powderPool, positionPool);
-        Position[] positionData = whereHas(positionPool, powderPool, movablePool);
+        ComponentId[] powderIds = whereHas(powderPool, movablePool, positionPool);
+        ComponentId[] movableIds = whereHas(movablePool, powderPool, positionPool);
+        ComponentId[] positionIds = whereHas(positionPool, powderPool, movablePool);
 
-        foreach(i, ref powder; data)
+        foreach(i, id; powderIds)
         {
-            updateComponent(powder, movableData[i], positionData[i], i);
+            ref Powder powder = powderPool.getComponentWithId(id);
+            ref Movable movable = movablePool.getComponentWithId(movableIds[i]);
+            ref Position position = positionPool.getComponentWithId(positionIds[i]);
+
+            updateComponent(powder, movable, position, i);
         }
     }
 
@@ -316,6 +323,9 @@ public class PowderSystem : System!Powder
 
 public class AdhesionSystem : System!Adhesion
 {
+    private IComponentPool!Adhesion adhesionPool;
+    private IComponentPool!Movable movablePool;
+
     private immutable float[2][2][GravityDirection] direction2Biases = 
         [
             GravityDirection.none: [[0, 0], [0, 0]],
@@ -327,14 +337,22 @@ public class AdhesionSystem : System!Adhesion
 
     import std.random;
 
+    public override void onCreated()
+    {
+        adhesionPool = Simulation.currentWorld.getPoolOf!Adhesion();
+        movablePool = Simulation.currentWorld.getPoolOf!Movable();
+    }
+
     protected override void onUpdated()
     {
-        auto data = whereHas!(Adhesion, Movable)(Simulation.currentWorld.getPoolOf!Adhesion(), Simulation.currentWorld.getPoolOf!Movable());
-        auto movableData = whereHas!(Movable, Adhesion)(Simulation.currentWorld.getPoolOf!Movable(), Simulation.currentWorld.getPoolOf!Adhesion());
+        ComponentId[] adhesionIds = whereHas!(Adhesion, Movable)(adhesionPool, movablePool);
+        ComponentId[] movableIds = whereHas!(Movable, Adhesion)(movablePool, adhesionPool);
 
-        foreach(i, ref adhesion; data)
+        foreach(i, id; adhesionIds)
         {
-            updateComponent(adhesion, movableData[i]);
+            ref Adhesion adhesion = adhesionPool.getComponentWithId(id);
+            ref Movable movable = movablePool.getComponentWithId(movableIds[i]);
+            updateComponent(adhesion, movable);
         }
     }
 
@@ -391,13 +409,17 @@ public class CombineSystem : System!Combine
 
     protected override void onUpdated()
     {
-        Combine[] data = whereHas!(Combine, Particle)(combinePool, particlePool);
-        Position[] positions = whereHas!(Position, Combine)(positionPool, combinePool);
-        Particle[] particles = whereHas!(Particle, Combine)(particlePool, combinePool);
+        ComponentId[] combineIds = whereHas!(Combine, Particle)(combinePool, particlePool);
+        ComponentId[] positionIds = whereHas!(Position, Combine)(positionPool, combinePool);
+        ComponentId[] particleIds = whereHas!(Particle, Combine)(particlePool, combinePool);
 
-        foreach(i, ref combine; data)
+        foreach(i, id; combineIds)
         {
-            updateComponent(combine, positions[i], particles[i]);
+            ref Combine combine = combinePool.getComponentWithId(id);
+            ref Position position = positionPool.getComponentWithId(positionIds[i]);
+            ref Particle particle = particlePool.getComponentWithId(particleIds[i]);
+
+            updateComponent(combine, position, particle);
         }
     }
 
