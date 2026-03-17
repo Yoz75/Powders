@@ -272,7 +272,6 @@ public:
     ComponentId[] where(scope whereDelegate!T dg)
     {
         Id[] result;
-        result.reserve(denseData.length);
 
         auto data = denseData.data;
 
