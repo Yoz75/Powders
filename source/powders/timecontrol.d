@@ -6,6 +6,15 @@ import powders.rendering;
 
 GameState globalGameState;
 
+/// Pauses system (this mixin just returns from method so use carefully) if `globalGameState` is `GameState.pause`. Should be placed before section, that should be paused.
+public enum string PauseIfNeeded = "
+{  
+    if(globalGameState == GameState.pause)
+    {
+        return;
+    }    
+}";
+
 public enum GameState
 {
     play,

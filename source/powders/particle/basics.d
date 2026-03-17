@@ -7,6 +7,7 @@ import kernel.simulation;
 import powders.map;
 import powders.particle.register;
 import powders.io;
+import powders.timecontrol;
 import powders.rendering;
 
 alias ParticleId = char[Particle.idSize];
@@ -108,6 +109,8 @@ public class MovableSystem : System!Movable
 
     protected override void onUpdated()
     {
+        mixin(PauseIfNeeded);
+        
         import std.random;
 
         ComponentId[] movableIds = whereHas(movablePool, positionPool);
@@ -213,6 +216,8 @@ public class GravitySystem : System!Gravity
 
     protected override void onUpdated()
     {
+        mixin(PauseIfNeeded);
+        
         ComponentId[] movableIds = whereHas(movablePool, gravityPool);
         
         foreach(id; movableIds)
@@ -267,6 +272,8 @@ public class PowderSystem : System!Powder
 
     protected override void onUpdated()
     {
+        mixin(PauseIfNeeded);
+
         mixin whereHasMany!(Powder, Movable, Position);
         mixin whereHasMany!(Movable, Powder, Position);
         mixin whereHasMany!(Position, Powder, Movable);
@@ -345,6 +352,8 @@ public class AdhesionSystem : System!Adhesion
 
     protected override void onUpdated()
     {
+        mixin(PauseIfNeeded);
+
         ComponentId[] adhesionIds = whereHas!(Adhesion, Movable)(adhesionPool, movablePool);
         ComponentId[] movableIds = whereHas!(Movable, Adhesion)(movablePool, adhesionPool);
 
@@ -409,6 +418,8 @@ public class CombineSystem : System!Combine
 
     protected override void onUpdated()
     {
+        mixin(PauseIfNeeded);
+        
         ComponentId[] combineIds = whereHas!(Combine, Particle)(combinePool, particlePool);
         ComponentId[] positionIds = whereHas!(Position, Combine)(positionPool, combinePool);
         ComponentId[] particleIds = whereHas!(Particle, Combine)(particlePool, combinePool);

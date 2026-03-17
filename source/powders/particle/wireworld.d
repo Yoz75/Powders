@@ -65,7 +65,7 @@ public class WWorldConductorSystem : System!WWorldConductor
 
     protected override void onUpdated()
     {
-        if(globalGameState != GameState.play) return;
+        mixin(PauseIfNeeded);
 
         /// Every particle has Position component so we can just get all components instead of filtering
         WWorldConductor[] data = wWorldPool.getComponents();
