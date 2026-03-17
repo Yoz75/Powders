@@ -150,7 +150,7 @@ alias renderModeConverter = kc.Color function(Entity entity);
 
 public final class RenderableSystem : System!MapRenderable
 {
-    private IComponentPool!MapRenderable renderablePool;
+    private IEventComponentPool!MapRenderable renderablePool;
     private IComponentPool!ShouldUpdateRenderableMarker renderableMarkerPool;
     private IComponentPool!Position positionPool;
 
@@ -161,11 +161,13 @@ public final class RenderableSystem : System!MapRenderable
         renderablePool = Simulation.currentWorld.getPoolOf!MapRenderable();
         renderableMarkerPool = Simulation.currentWorld.getPoolOf!ShouldUpdateRenderableMarker();
         positionPool = Simulation.currentWorld.getPoolOf!Position();
+
+        addNotifierPool(renderablePool);
     }
 
-    protected override void onAdd(IEventComponentPool!MapRenderable pool, Entity entity)
+    protected override void onAdd(IEventComponentPool!MapRenderable pool, Id entityId)
     {
-        renderableMarkerPool.addComponent(entity.id, ShouldUpdateRenderableMarker.init);
+        renderableMarkerPool.addComponent(entityId, ShouldUpdateRenderableMarker.init);
     }
 
     protected override void onUpdated()
@@ -174,7 +176,7 @@ public final class RenderableSystem : System!MapRenderable
 
         mixin whereHasMany!(MapRenderable, Position, ShouldUpdateRenderableMarker);
         mixin whereHasMany!(Position, MapRenderable, ShouldUpdateRenderableMarker);
-
+        
         ComponentId[] updatedRenderableIds = whereHas(renderablePool, positionPool, renderableMarkerPool);
 
         //all pareticles have map renderable so everything is ok
@@ -186,6 +188,7 @@ public final class RenderableSystem : System!MapRenderable
             ref Position position = positionPool.getComponentWithId(positionIds[i]);
 
             updateComponent(renderable, position);
+            renderableMarkerPool.removeComponent(updatedRenderableIds[i]);
         }
     }
 

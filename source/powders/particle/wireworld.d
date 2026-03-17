@@ -119,12 +119,12 @@ public class WWorldSparkleSystem : System!WWorldSparkle
 {
     import powders.particle.basics : Particle;
 
-    protected override void onAdd(IEventComponentPool!WWorldSparkle pool, Entity entity)
+    protected override void onAdd(IEventComponentPool!WWorldSparkle pool, Id entityId)
     {
         IComponentPool!WWorldConductor conductorPool = Simulation.currentWorld.getPoolOf!WWorldConductor();
-        if(!conductorPool.hasComponent(entity.id)) return;
+        if(!conductorPool.hasComponent(entityId)) return;
 
-        ref WWorldConductor sparkle = conductorPool.getComponent(entity.id);
+        ref WWorldConductor sparkle = conductorPool.getComponent(entityId);
         sparkle.state = ConductorState.head;
         sparkle.nextState = ConductorState.head;
     }

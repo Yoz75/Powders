@@ -60,8 +60,8 @@ public class InitialParticlesSystem : BaseSystem
 
         (cast(MovableSystem) MovableSystem.instance).onMoved ~= (Entity self, Entity other)
         {
-            (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(self);
-            (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(other);
+            (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(self.id);
+            (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(other.id);
         };
     }
 }

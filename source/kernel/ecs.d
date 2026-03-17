@@ -164,6 +164,9 @@ public:
         if(index >= 0) 
         {
             denseData[index] = value;
+            
+            foreach(dg; onAddDelegates)
+                dg(this, entityId);
             return;
         }
 
@@ -408,7 +411,6 @@ public abstract class BaseSystem
 public abstract class System(T) : BaseSystem
 {    
     public static System!T instance;
-    private IEventComponentPool!T[] notifiers;
 
     public this()
     {
@@ -420,27 +422,20 @@ public abstract class System(T) : BaseSystem
     ///   pool = 
     protected final void addNotifierPool(IEventComponentPool!T pool)
     {
-        notifiers ~= pool;
+        pool.addOnAddAction(&onAdd);
+        pool.addOnRemoveAction(&onAdd);
     }
 
     protected final void removeNotifierPool(IEventComponentPool!T pool)
     {
         import std.algorithm.mutation;
         
-        foreach(i, notifier; notifiers)
-        {
-            if(notifier is pool)
-            {
-                notifiers.remove(i);
-                break;
-            }
-        }
     }
 
     /// Calls when T component was added to entity
     /// Params:
     ///   entity = the entity
-    protected void onAdd(IEventComponentPool!T pool, Entity entity)
+    protected void onAdd(IEventComponentPool!T pool, Id entity)
     {
         //nothing
     }
@@ -448,7 +443,7 @@ public abstract class System(T) : BaseSystem
     /// Calls when T component was removed from entity
     /// Params:
     ///   entity = the entity
-    protected void onRemove(IComponentPool!T pool, Entity entity)
+    protected void onRemove(IComponentPool!T pool, Id entity)
     {
         //nothing
     }

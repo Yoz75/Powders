@@ -49,9 +49,6 @@ public void buildParticle(Entity entity, SerializedParticleType type)
                 throw new Exception("Not all components are foreached!");
         }
     }
-
-    mixin TODO!"if everythin breaks -- uncomment this!";
-    //entity.getComponent!Particle().typeId = type.typeID;
 }
 
 public void destroyParticle(Entity entity)

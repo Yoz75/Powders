@@ -130,12 +130,12 @@ public class TemperatureSystem : System!Temperature
         resolutionUniform.setValue(mapResolution.ptr);
     }
 
-    public void updateTemperatureOf(Entity entity)
+    public void updateTemperatureOf(Id entityId)
     {
-        immutable auto mapPos = Simulation.currentWorld.getPoolOf!Position().getComponent(entity.id).xy;
+        immutable auto mapPos = Simulation.currentWorld.getPoolOf!Position().getComponent(entityId).xy;
 
         Temperature[1] resultBuffer;
-        resultBuffer[0] = Simulation.currentWorld.getPoolOf!Temperature().getComponent(entity.id);
+        resultBuffer[0] = Simulation.currentWorld.getPoolOf!Temperature().getComponent(entityId);
 
         valueInSSBO.update(resultBuffer, cast(uint)((mapPos[0] + mapResolution[0] * mapPos[1]) * Temperature.sizeof));
     }
@@ -148,9 +148,9 @@ public class TemperatureSystem : System!Temperature
         temperatureShader.free();
     }
 
-    protected override void onAdd(IEventComponentPool!Temperature pool, Entity entity)
+    protected override void onAdd(IEventComponentPool!Temperature pool, Id entityId)
     {
-        updateTemperatureOf(entity);
+        updateTemperatureOf(entityId);
     }
 
     protected override void onUpdated()
@@ -227,14 +227,14 @@ public class DeltaTemperatureSystem : System!DeltaTemperature
         temperaturePool = Simulation.currentWorld.getPoolOf!Temperature();
     }
 
-    protected override void onAdd(IEventComponentPool!DeltaTemperature pool, Entity entity)
+    protected override void onAdd(IEventComponentPool!DeltaTemperature pool, Id entityId)
     {
-        DeltaTemperature delta = deltaPool.getComponent(entity.id);
-        ref Temperature temperature = temperaturePool.getComponent(entity.id);
+        DeltaTemperature delta = deltaPool.getComponent(entityId);
+        ref Temperature temperature = temperaturePool.getComponent(entityId);
 
         temperature.value += delta.delta;
 
-        (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(entity);
+        (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(entityId);
     }
 }
 
