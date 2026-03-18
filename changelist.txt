@@ -31,7 +31,7 @@
 * Added parallel flag for potentially faster compilation
 * Added pause on space and frame-stap on F key
 * Systems can be protected from pause with isPausable field!
-* MADE RENDERING BLAZINGLY FAST AND SEPARATED RENDER THREAD \^-^/
+* MADE RENDERING BLAZINGLY FAST \^-^/
 * Added electricity in form of wire world!
 * Added wire world render mode on key 3
 * Refactored temperature render mode
