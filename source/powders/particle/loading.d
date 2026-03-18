@@ -96,12 +96,7 @@ SerializedParticleType[] processTypes(string path)
         
         SerializedParticleType type;
 
-        // Foreach because if we just assign value some characters at the and of id will be null! 
-        // Idk why this happen, but it is what it is
-        foreach (i, char idChar; typeEntry.name.extractDirName()) //get only the name of directory
-        {
-            type.typeID[i] = idChar;
-        }
+        type.typeID = typeEntry.name.extractDirName();
 
         type.components = processComponents(typeEntry);
 

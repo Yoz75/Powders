@@ -7,7 +7,7 @@ import powders.particle.register;
 import powders.io;
 import powders.rendering;
 
-alias ParticleId = char[Particle.idSize];
+alias ParticleId = string;
 
 /// Component, that has every particle
 @Component(OnDestroyAction.destroy) public struct Particle
@@ -15,7 +15,6 @@ alias ParticleId = char[Particle.idSize];
     mixin MakeJsonizable;
 
 public:
-    enum idSize = 16;
     /// The id of particle's type. Needed for creating/deleting etc.
     ParticleId typeId;
 }
@@ -71,21 +70,8 @@ public:
 {
     mixin MakeJsonizable;
 public:
-    ParticleId otherId;
-    ParticleId resultId;
-
-    @JsonizeField this(string other, string result)
-    {
-        foreach(i, char otherChar; other)
-        {
-            otherId[i] = otherChar;
-        }
-
-        foreach(i, char resultChar; result)
-        {
-            resultId[i] = resultChar;
-        }
-    }
+    @JsonizeField ParticleId otherId;
+    @JsonizeField ParticleId resultId;
 }
 
 public class MovableSystem : MapEntitySystem!Movable
