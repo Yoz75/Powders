@@ -9,60 +9,20 @@ import dlib.container.array;
 BaseSystem[] systems;
 
 alias Id = size_t;
+alias EntityId = Id;
 alias ComponentId = Id;
-alias onRemoveAction(T) = void delegate(IEventComponentPool!T pool, Id entityId);
-alias onAddAction(T) = void delegate(IEventComponentPool!T pool, Id entityId);
+alias onRemoveAction(T) = void delegate(ComponentPool!T pool, EntityId entityId);
+alias onAddAction(T) = void delegate(ComponentPool!T pool, EntityId entityId);
 
-public interface IComponentPool(T)
 {
-    /// add component to entity or set it to a new value
-    /// Params:
-    /// entity = the entity
-    /// value = the initial value
-    void addComponent(Id entityId, T value);
 
-    /// Remove component from entity. Does nothing, if there's no such component
-    /// Params:
-    /// entity = the entity
-    void removeComponent(Id entityId);
 
-    /// Check if entity has this component
-    /// Params:
-    /// entity = the entity (very informational tip haha)
-    /// Returns: true if entity has component, false if not
-    bool hasComponent(Id entityId);
 
-    /// Get all active components. If an entity doesn't have this component, it won't be included.
-    /// Returns: the array of currently active components
-    T[] getComponents();
 
-    ref T getComponent(Id entityId);
 
-    /// Apply delegate `dg` for each component of component pool and include them into returned array, if dg returned true
-    /// Params:
-    ///   dataPool = the data pool
-    ///   dg = the delegate that desides to include components into the result array
-    /// Returns: Ids of components, selected by `dg` (may be empty)
-    public ComponentId[] where(scope whereDelegate!T dg);
 
-    /// Get component by it's unique ID
-    /// Params:
-    ///    id = the id of component
-    /// Returns: reference to the component
-    public ref T getComponentWithId(ComponentId id);
-}
 
-public interface IEventComponentPool(T) : IComponentPool!T
-{
-    /// Add event listener for adding component. This is needed for events, because they are added and removed in the same frame, so marker components can't be used
-    /// Params:
-    ///   action = the delegate, that will be called when component will be added. It takes an entity as parameter
-    void addOnAddAction(scope onAddAction!T action);
 
-    /// Add event listener for removing component. This is needed for events, because they are added and removed in the same frame, so marker components can't be used
-    /// Params:
-    ///   action = the delegate, that will be called when component will be removed. It takes an entity as parameter
-    void addOnRemoveAction(scope onRemoveAction!T action);
 }
 
 /// Get array of components of type T, if their entities have components THas...
@@ -84,7 +44,7 @@ public mixin template whereHasMany(T, THas...)
 
         static foreach(i, TType; T)
         {
-            result ~= "IComponentPool!" ~ TType.stringof ~ " " ~ TType.stringof.toLower() ~ "Pool, ";
+            result ~= "ComponentPool!" ~ TType.stringof ~ " " ~ TType.stringof.toLower() ~ "Pool, ";
         }
 
         result = result[0..$-2]; // remove last ", "
@@ -92,7 +52,7 @@ public mixin template whereHasMany(T, THas...)
         return result;
     }
 
-    mixin("ComponentId[] whereHas(IComponentPool!T dataPool, " ~ __variadic2Pools!(THas)() ~ ")" ~
+    mixin("ComponentId[] whereHas(ComponentPool!T dataPool, " ~ __variadic2Pools!(THas)() ~ ")" ~
     q{{
         bool has(Id entityId, T data)
         {
@@ -109,7 +69,7 @@ public mixin template whereHasMany(T, THas...)
     }});
 }
 
-public ComponentId[] whereHas(T, THas)(IComponentPool!T dataPool, IComponentPool!THas hasPool)
+public ComponentId[] whereHas(T, THas)(ComponentPool!T dataPool, ComponentPool!THas hasPool)
 {
     bool has(Id entityId, T data)
     {   
@@ -123,8 +83,7 @@ public alias whereDelegate(T) = bool delegate(Id entityId, T data);
 
 import kernel.todo;
 mixin TODO!"Add kernel.exceptions module, create such classes like NullException, ArgumentException etc; and replace all `Exception`s with new ones.";
-public class DenseComponentPool(T, size_t entityReserve = 1024, size_t componentReserve = 128) 
-    : IEventComponentPool!T
+public class ComponentPool(T, size_t entityReserve = 1024, size_t componentReserve = 128)
 {
     /// Index is an entity id, value is an index in denseData array, or -1 if entity doesn't have this component
     private Array!(ptrdiff_t, entityReserve) sparce;
@@ -272,7 +231,6 @@ public:
     ComponentId[] where(scope whereDelegate!T dg)
     {
         Id[] result;
-
         auto data = denseData.data;
 
         foreach(denseId, ref value; data)
@@ -285,15 +243,6 @@ public:
         }
 
         return result;
-    }
-
-    private void ensureSparceBounds(Id entityId)
-    {
-        enum increaseCoefficient = 2;
-        if(entityId >= sparce.length)
-        {
-            sparce.resize((entityId + 1) * increaseCoefficient, -1);
-        }
     }
 
      /// Get component by it's unique ID
@@ -312,6 +261,20 @@ public:
         }
 
         return denseData.data[id];
+    }
+
+    EntityId componentId2Entity(ComponentId id)
+    {
+        return denseSparce[id];
+    }
+
+    private void ensureSparceBounds(Id entityId)
+    {
+        enum increaseCoefficient = 2;
+        if(entityId >= sparce.length)
+        {
+            sparce.resize((entityId + 1) * increaseCoefficient, -1);
+        }
     }
 }
 
@@ -419,13 +382,13 @@ public abstract class System(T) : BaseSystem
     /// Add pool, that notifies our system about such events, that would be diffcult to implement using marker-components
     /// Params:
     ///   pool = 
-    protected final void addNotifierPool(IEventComponentPool!T pool)
+    protected final void addNotifierPool(ComponentPool!T pool)
     {
         pool.addOnAddAction(&onAdd);
         pool.addOnRemoveAction(&onAdd);
     }
 
-    protected final void removeNotifierPool(IEventComponentPool!T pool)
+    protected final void removeNotifierPool(ComponentPool!T pool)
     {
         import std.algorithm.mutation;
         
@@ -434,7 +397,7 @@ public abstract class System(T) : BaseSystem
     /// Calls when T component was added to entity
     /// Params:
     ///   entity = the entity
-    protected void onAdd(IEventComponentPool!T pool, Id entity)
+    protected void onAdd(ComponentPool!T pool, Id entity)
     {
         //nothing
     }
@@ -442,7 +405,7 @@ public abstract class System(T) : BaseSystem
     /// Calls when T component was removed from entity
     /// Params:
     ///   entity = the entity
-    protected void onRemove(IComponentPool!T pool, Id entity)
+    protected void onRemove(ComponentPool!T pool, Id entity)
     {
         //nothing
     }
@@ -462,17 +425,17 @@ public class World
     /// Get component pool of type T. If it doesn't exist, it will be created. 
     /// Tip for duraks: if you won't get pool of some type U within all lifetime of world, this pool won't be created.
     /// Returns: 
-    public IEventComponentPool!T getPoolOf(T)()
+    public ComponentPool!T getPoolOf(T)()
     {
         const Object* pool = T.stringof in componentPools;
 
         if(pool is null)
         {
-            auto newPool = new DenseComponentPool!T();
+            auto newPool = new ComponentPool!T();
             componentPools[T.stringof] = newPool;
             return newPool;
         }
 
-        return cast(IEventComponentPool!T)(*pool);
+        return cast(ComponentPool!T)(*pool);
     }
 }

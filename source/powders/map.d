@@ -27,7 +27,7 @@ public struct Map
     private Entity[][] map;
     private Entity[][] tempMap; 
 
-    private IComponentPool!Position positionPool;
+    private ComponentPool!Position positionPool;
 
     /// The resolution of map, [x, y]
     public @property int[2] resolution() pure const

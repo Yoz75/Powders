@@ -113,8 +113,8 @@ private final class MapRenderSystem : BaseSystem
     private Sprite mapSprite;
     private IBasicShader mapShader;
 
-    private IComponentPool!MapRenderable renderablePool;
-    private IComponentPool!ShouldUpdateRenderableMarker markerPool;
+    private ComponentPool!MapRenderable renderablePool;
+    private ComponentPool!ShouldUpdateRenderableMarker markerPool;
 
     public this()
     {
@@ -150,9 +150,9 @@ alias renderModeConverter = kc.Color function(Entity entity);
 
 public final class RenderableSystem : System!MapRenderable
 {
-    private IEventComponentPool!MapRenderable renderablePool;
-    private IComponentPool!ShouldUpdateRenderableMarker renderableMarkerPool;
-    private IComponentPool!Position positionPool;
+    private ComponentPool!MapRenderable renderablePool;
+    private ComponentPool!ShouldUpdateRenderableMarker renderableMarkerPool;
+    private ComponentPool!Position positionPool;
 
     private renderModeConverter currentRenderModeConverter;
 
@@ -165,7 +165,7 @@ public final class RenderableSystem : System!MapRenderable
         addNotifierPool(renderablePool);
     }
 
-    protected override void onAdd(IEventComponentPool!MapRenderable pool, Id entityId)
+    protected override void onAdd(ComponentPool!MapRenderable pool, Id entityId)
     {
         renderableMarkerPool.addComponent(entityId, ShouldUpdateRenderableMarker.init);
     }

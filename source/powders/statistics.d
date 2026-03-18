@@ -81,7 +81,7 @@ private class TemperatureInfoCollector : IParticleInfoCollector
 {
     import powders.particle.temperature;
 
-    private IComponentPool!Temperature temperaturePool;
+    private ComponentPool!Temperature temperaturePool;
 
     public this()
     {
@@ -103,7 +103,7 @@ private class TypeNameCollector : IParticleInfoCollector
 {
     import powders.particle.basics;
     import kernel.simulation;
-    private IComponentPool!Particle particlePool;
+    private ComponentPool!Particle particlePool;
 
     public this()
     {

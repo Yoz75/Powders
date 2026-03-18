@@ -40,8 +40,8 @@ public:
 /// Wireworld electricity system
 public class WWorldConductorSystem : System!WWorldConductor
 {
-    private IComponentPool!WWorldConductor wWorldPool;
-    private IComponentPool!Position positionPool;
+    private ComponentPool!WWorldConductor wWorldPool;
+    private ComponentPool!Position positionPool;
     
     public override void onCreated()
     {
@@ -119,9 +119,9 @@ public class WWorldSparkleSystem : System!WWorldSparkle
 {
     import powders.particle.basics : Particle;
 
-    protected override void onAdd(IEventComponentPool!WWorldSparkle pool, Id entityId)
+    protected override void onAdd(ComponentPool!WWorldSparkle pool, Id entityId)
     {
-        IComponentPool!WWorldConductor conductorPool = Simulation.currentWorld.getPoolOf!WWorldConductor();
+        ComponentPool!WWorldConductor conductorPool = Simulation.currentWorld.getPoolOf!WWorldConductor();
         if(!conductorPool.hasComponent(entityId)) return;
 
         ref WWorldConductor sparkle = conductorPool.getComponent(entityId);
@@ -134,8 +134,8 @@ public Color wwConductor2Color(Entity entity)
 {
     import davincilib.color;
 
-    IComponentPool!WWorldConductor conductorPool = Simulation.currentWorld.getPoolOf!WWorldConductor();
-    IComponentPool!MapRenderable renderablePool = Simulation.currentWorld.getPoolOf!MapRenderable();
+    ComponentPool!WWorldConductor conductorPool = Simulation.currentWorld.getPoolOf!WWorldConductor();
+    ComponentPool!MapRenderable renderablePool = Simulation.currentWorld.getPoolOf!MapRenderable();
 
     if(!conductorPool.hasComponent(entity.id)) return renderablePool.getComponent(entity.id).color;
     immutable auto conductor = conductorPool.getComponent(entity.id);

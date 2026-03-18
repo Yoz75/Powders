@@ -108,7 +108,7 @@ public class TemperatureSystem : System!Temperature
     private Temperature[] valueInBuffer;
     private Temperature[] valueOutBuffer;
 
-    private IEventComponentPool!Temperature temperaturePool;
+    private ComponentPool!Temperature temperaturePool;
 
     /// Mark that entity was updated and it's chunk must be recomputed
 
@@ -148,7 +148,7 @@ public class TemperatureSystem : System!Temperature
         temperatureShader.free();
     }
 
-    protected override void onAdd(IEventComponentPool!Temperature pool, Id entityId)
+    protected override void onAdd(ComponentPool!Temperature pool, Id entityId)
     {
         updateTemperatureOf(entityId);
     }
@@ -218,8 +218,8 @@ public class TemperatureSystem : System!Temperature
 
 public class DeltaTemperatureSystem : System!DeltaTemperature
 {
-    private IComponentPool!DeltaTemperature deltaPool;
-    private IComponentPool!Temperature temperaturePool;
+    private ComponentPool!DeltaTemperature deltaPool;
+    private ComponentPool!Temperature temperaturePool;
 
     public override void onCreated()
     {
@@ -227,7 +227,7 @@ public class DeltaTemperatureSystem : System!DeltaTemperature
         temperaturePool = Simulation.currentWorld.getPoolOf!Temperature();
     }
 
-    protected override void onAdd(IEventComponentPool!DeltaTemperature pool, Id entityId)
+    protected override void onAdd(ComponentPool!DeltaTemperature pool, Id entityId)
     {
         DeltaTemperature delta = deltaPool.getComponent(entityId);
         ref Temperature temperature = temperaturePool.getComponent(entityId);

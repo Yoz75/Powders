@@ -96,9 +96,9 @@ public class MovableSystem : System!Movable
     /// Calls when `self` moved and swapped with `other`
     public void delegate(Entity self, Entity other)[] onMoved;
 
-    private IComponentPool!Movable movablePool;
-    private IComponentPool!Position positionPool;
-    private IComponentPool!Particle particlePool;
+    private ComponentPool!Movable movablePool;
+    private ComponentPool!Position positionPool;
+    private ComponentPool!Particle particlePool;
 
     public override void onCreated()
     {
@@ -205,8 +205,8 @@ public class GravitySystem : System!Gravity
 {
     import kernel.simulation;
 
-    private IComponentPool!Movable movablePool;
-    private IComponentPool!Gravity gravityPool;
+    private ComponentPool!Movable movablePool;
+    private ComponentPool!Gravity gravityPool;
 
     public override void onCreated()
     {
@@ -259,9 +259,9 @@ public class ChangeGravitySystem : BaseSystem
 
 public class PowderSystem : System!Powder
 {
-    private IComponentPool!Powder powderPool;
-    private IComponentPool!Movable movablePool;
-    private IComponentPool!Position positionPool;
+    private ComponentPool!Powder powderPool;
+    private ComponentPool!Movable movablePool;
+    private ComponentPool!Position positionPool;
 
     public override void onCreated()
     {
@@ -330,8 +330,8 @@ public class PowderSystem : System!Powder
 
 public class AdhesionSystem : System!Adhesion
 {
-    private IComponentPool!Adhesion adhesionPool;
-    private IComponentPool!Movable movablePool;
+    private ComponentPool!Adhesion adhesionPool;
+    private ComponentPool!Movable movablePool;
 
     private immutable float[2][2][GravityDirection] direction2Biases = 
         [
@@ -405,9 +405,9 @@ public class AdhesionSystem : System!Adhesion
 
 public class CombineSystem : System!Combine
 {
-    private IComponentPool!Combine combinePool;
-    private IComponentPool!Particle particlePool;
-    private IComponentPool!Position positionPool;
+    private ComponentPool!Combine combinePool;
+    private ComponentPool!Particle particlePool;
+    private ComponentPool!Position positionPool;
 
     public override void onCreated()
     {

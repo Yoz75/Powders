@@ -42,9 +42,9 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!WWorldSparkleSystem.create();
         immutable auto mapResolution = globalMap.resolution;
 
-        IComponentPool!Particle particlePool = Simulation.currentWorld.getPoolOf!Particle();
-        IComponentPool!Temperature temperaturePool = Simulation.currentWorld.getPoolOf!Temperature();
-        IComponentPool!MapRenderable renderablePool = Simulation.currentWorld.getPoolOf!MapRenderable();
+        ComponentPool!Particle particlePool = Simulation.currentWorld.getPoolOf!Particle();
+        ComponentPool!Temperature temperaturePool = Simulation.currentWorld.getPoolOf!Temperature();
+        ComponentPool!MapRenderable renderablePool = Simulation.currentWorld.getPoolOf!MapRenderable();
 
         foreach (i; 0..mapResolution[0])
         {
@@ -62,6 +62,8 @@ public class InitialParticlesSystem : BaseSystem
         {
             (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(self.id);
             (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(other.id);
+            Simulation.currentWorld.getPoolOf!ShouldUpdateRenderableMarker().addComponent(self.id, ShouldUpdateRenderableMarker.init);
+            Simulation.currentWorld.getPoolOf!ShouldUpdateRenderableMarker().addComponent(other.id, ShouldUpdateRenderableMarker.init);
         };
     }
 }
