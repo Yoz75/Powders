@@ -334,7 +334,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
              1 [][][]
         */
         // should be int[2][2], but float[2][2] because of boilerplate
-        enum float[2][2][GravityDirection] direction2Biases = 
+        immutable float[2][2][GravityDirection] direction2Biases = 
         [
             GravityDirection.none: [[0, 0], [0, 0]],
             GravityDirection.down: [[-1, 0], [1, 0]],
