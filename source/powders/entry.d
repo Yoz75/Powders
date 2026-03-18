@@ -15,8 +15,8 @@ private class CreateMapSystem : BaseSystem
 {
     public override void onCreated()
     {
-        enum defaultRes = 512;
-        globalMap = Map([defaultRes, defaultRes]);
+        enum defaultRes = 64;
+        globalMap = Map([defaultRes*2, defaultRes]);
     }
 }
 
