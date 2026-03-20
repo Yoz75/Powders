@@ -49,7 +49,7 @@ public void buildParticle(Entity entity, SerializedParticleType type)
         }
     }
 
-    entity.getComponent!Particle().typeId = type.typeID;
+    //entity.getComponent!Particle().typeId = type.typeID;
 }
 
 public void destroyParticle(Entity entity)

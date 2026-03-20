@@ -69,6 +69,24 @@ public:
     @JsonizeField TemperatureScalar delta;
 }
 
+/// Something that turns into something other when temperature more than critical point
+public @Component(OnDestroyAction.destroy) struct Meltable
+{
+    mixin MakeJsonizable;
+public:
+    @JsonizeField string resultId;
+    @JsonizeField TemperatureScalar criticalTemperature;
+}
+
+/// Something that turns into something other when temperature less than critical point
+public @Component(OnDestroyAction.destroy) struct Solidable
+{
+    mixin MakeJsonizable;
+public:
+    @JsonizeField string resultId;
+    @JsonizeField TemperatureScalar criticalTemperature;
+}
+
 
 import kernel.todo;
 mixin TODO!("Currently TemperatureSystem is broken when process ambient heat, fix later!");

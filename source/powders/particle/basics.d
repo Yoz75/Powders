@@ -173,7 +173,7 @@ public class GravitySystem : System!Gravity
 
     protected override void onUpdated()
     {
-        auto ref data = ComponentPool!Movable.instance.data[Simulation.currentWorld.id];
+        auto data = ComponentPool!Movable.instance.getComponents(Simulation.currentWorld);
 
         foreach(i, ref movable; data)
         {

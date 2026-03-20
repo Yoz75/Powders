@@ -59,7 +59,7 @@ public class WWorldConductorSystem : System!WWorldConductor
     {
         if(globalGameState != GameState.play) return;
 
-        ref data = ComponentPool!WWorldConductor.instance.data[Simulation.currentWorld.id];
+        auto data = ComponentPool!WWorldConductor.instance.getComponents(Simulation.currentWorld);
         foreach(i, ref conductor; data)
         {
             Entity entity = Entity(Simulation.currentWorld, i);
@@ -73,7 +73,7 @@ public class WWorldConductorSystem : System!WWorldConductor
     {
         if(globalGameState != GameState.play) return;
 
-        ref data = ComponentPool!WWorldConductor.instance.data[Simulation.currentWorld.id];
+        auto data = ComponentPool!WWorldConductor.instance.getComponents(Simulation.currentWorld);
         foreach(i, ref conductor; data)
         {
             Entity entity = Entity(Simulation.currentWorld, i);

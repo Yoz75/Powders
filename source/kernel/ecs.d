@@ -16,9 +16,10 @@ public struct ComponentPool(T)
 {
     public static ComponentPool!T instance;
 
-    T[][] data;
-    // is entity [worldId][i] has this component or not?
-    private BitArray[] entitiesHasTable;
+    // dense storage per world
+    private T[][] dense;
+    private Id[][] entities;        // dense index -> entity id
+    private Id[][] sparse;          // entity id -> dense index
 
     private onAddAction[] onAddDelegates;
     private onRemoveAction[] onRemoveDelegates;
@@ -29,20 +30,10 @@ public struct ComponentPool(T)
     ///   componentsCount = count of reserved components 
     public void reserve(World world, size_t componentsCount)
     {
-        // tryExtendData works with entitirs, so we make a kostyl
-        if(world.id >= data.length)
-        {
-            data.length = world.id + 1;
-        }
+        ensureWorld(world);
 
-        if(world.id >= entitiesHasTable.length)
-        {
-            entitiesHasTable.length = world.id + 1;
-        }
-
-        data[world.id].reserve(componentsCount);
-
-        entitiesHasTable[world.id].length = data[world.id].length;         
+        dense[world.id].reserve(componentsCount);
+        entities[world.id].reserve(componentsCount);
     }
 
     /// Add component to entity
@@ -51,25 +42,54 @@ public struct ComponentPool(T)
     ///   value = the value of added component
     public void addComponent(Entity entity, T value)
     {
-        tryExtendData(entity);
+        ensureWorld(entity.world);
 
-        data[entity.world.id][entity.id] = value;
-        entitiesHasTable[entity.world.id][entity.id] = true;
+        auto wid = entity.world.id;
+        auto eid = entity.id;
 
-        foreach(onAddDelegate; onAddDelegates)
+        ensureSparse(wid, eid);
+
+        if (hasComponent(entity))
+        {
+            dense[wid][sparse[wid][eid]] = value;
+            return;
+        }
+
+        auto index = dense[wid].length;
+
+        dense[wid] ~= value;
+        entities[wid] ~= eid;
+        sparse[wid][eid] = index;
+
+        foreach (onAddDelegate; onAddDelegates)
         {
             onAddDelegate(entity);
         }
     }
 
     /// Remove component from entity. If entity already doesn't have this component, nothing will happen
-    /// Params:
-    ///   entity = the entity
     public void removeComponent(Entity entity)
-    {
-        tryExtendData(entity);
-        data[entity.world.id][entity.id] = T.init;
-        entitiesHasTable[entity.world.id][entity.id] = false;
+    { 
+        if (!hasComponent(entity))
+            return;
+
+        auto wid = entity.world.id;
+        auto eid = entity.id;
+
+        auto index = sparse[wid][eid];
+        auto lastIndex = dense[wid].length - 1;
+        auto lastEntity = entities[wid][lastIndex];
+
+        // swap-remove
+        dense[wid][index] = dense[wid][lastIndex];
+        entities[wid][index] = lastEntity;
+        sparse[wid][lastEntity] = index;
+
+        dense[wid].length--;
+        entities[wid].length--;
+
+        // mark as removed
+        sparse[wid][eid] = Id.max;
 
         foreach (onRemove; onRemoveDelegates)
         {
@@ -87,6 +107,13 @@ public struct ComponentPool(T)
         onAddDelegates ~= action;
     }
 
+    public T[] getComponents(World world)
+    {
+        ensureWorld(world);
+
+        return dense[world.id];
+    }
+
     /// Get component for entity
     /// Params:
     ///   entity = the entity
@@ -94,43 +121,59 @@ public struct ComponentPool(T)
     // when error is true
     public ref T getComponent(Entity entity)
     {
-        tryExtendData(entity);
-        return data[entity.world.id][entity.id];
+        ensureWorld(entity.world);
+        auto wid = entity.world.id;
+        auto eid = entity.id;
+
+        auto idx = sparse[wid][eid];
+
+        if(idx == Id.max)
+        {
+            throw new Exception("Component does not exists!");
+        }
+
+        return dense[wid][idx];
     }
 
     public bool hasComponent(Entity entity)
     {
-        tryExtendData(entity);
+        auto wid = entity.world.id;
+        auto eid = entity.id;
 
-        return entitiesHasTable[entity.world.id][entity.id];
+        if (wid >= sparse.length) return false;
+        if (eid >= sparse[wid].length) return false;
+
+        auto idx = sparse[wid][eid];
+
+        if (idx == Id.max) return false;
+
+        return idx < entities[wid].length &&
+            entities[wid][idx] == eid;
     }
 
-    /// Try to extend data and has table if they are too short
-    /// (this name is bad, it it neetds to be renamed)
-    /// Params:
-    ///   entity = the entity
-    pragma(inline, true)
-    private void tryExtendData(Entity entity)
+    private void ensureWorld(World world)
     {
-        if (entity.world.id >= entitiesHasTable.length)
-        {
-            entitiesHasTable.length = entity.world.id + 1;
-        }
-        if (entity.world.id >= data.length)
-        {
-            data.length = entity.world.id + 1;
-        }
+        auto wid = world.id;
 
-        const ref BitArray worldHasTable = entitiesHasTable[entity.world.id];
-        const ref T[] worldDataTable = data[entity.world.id];
-
-        if (entity.id >= worldHasTable.length)
+        if (wid >= dense.length)
         {
-            entitiesHasTable[entity.world.id].length = entity.id + 1;
+            dense.length = wid + 1;
+            entities.length = wid + 1;
+            sparse.length = wid + 1;
         }
-        if (entity.id >= worldDataTable.length)
+    }
+
+    private void ensureSparse(Id wid, Id eid)
+    {
+        if (eid >= sparse[wid].length)
         {
-            data[entity.world.id].length = entity.id + 1;
+            auto oldLen = sparse[wid].length;
+            sparse[wid].length = eid + 1;
+
+            foreach (i; oldLen .. sparse[wid].length)
+            {
+                sparse[wid][i] = Id.max;
+            }
         }
     }
 }
