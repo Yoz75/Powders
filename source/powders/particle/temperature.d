@@ -183,7 +183,11 @@ public class TemperatureSystem : System!Temperature
         {
             auto ref temperature = entity.getComponent!Temperature();
 
-            temperature = valueOutBuffer[x + mapResolution[0] * y];
+            immutable bufferIndex = x + mapResolution[0] * y;
+            valueOutBuffer[bufferIndex].value =
+             clamp(valueOutBuffer[bufferIndex].value, Temperature.min, Temperature.max);
+
+            temperature = valueOutBuffer[bufferIndex];
             foreach(action; onTemperatureChanged)
             {
                 action(entity);
