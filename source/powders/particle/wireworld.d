@@ -62,7 +62,7 @@ public class WWorldConductorSystem : System!WWorldConductor
         auto data = ComponentPool!WWorldConductor.instance.getComponents(Simulation.currentWorld);
         foreach(i, ref conductor; data)
         {
-            Entity entity = Entity(Simulation.currentWorld, i);
+            Entity entity = ComponentPool!WWorldConductor.instance.dense2Entity(Simulation.currentWorld, i);
             if(!entity.hasComponent!WWorldConductor) continue;  
 
             conductor.state = conductor.nextState;
@@ -133,6 +133,8 @@ public class WWorldSparkleSystem : MapEntitySystem!WWorldSparkle
 
         entity.getComponent!WWorldConductor().state = ConductorState.head;
         entity.getComponent!WWorldConductor().nextState = ConductorState.head;
+
+        entity.removeComponent!WWorldSparkle();
     }
 }
 

@@ -233,6 +233,8 @@ public class DeltaTemperatureSystem : MapEntitySystem!DeltaTemperature
 
         temperature.value += delta.delta;
         (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(entity);
+
+        entity.removeComponent!DeltaTemperature();
     }
 }
 
