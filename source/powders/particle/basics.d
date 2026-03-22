@@ -74,6 +74,11 @@ public:
     @JsonizeField ParticleId resultId;
 }
 
+@Component(OnDestroyAction.destroy) public struct Gas
+{
+    mixin MakeJsonizable;
+}
+
 public class MovableSystem : MapEntitySystem!Movable
 {
     /// Calls when `self` moved and swapped with `other`
@@ -379,3 +384,25 @@ public class CombineSystem : MapEntitySystem!Combine
     }
 }
 
+public class GasSystem : MapEntitySystem!Gas
+{
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Gas gas)
+    {
+        import std.random;
+
+        immutable float[2][8] moveDirections = 
+        [
+            [-1, -1],
+            [-1, 0],
+            [-1, 1],
+            [0, -1],
+            [0, 1],
+            [1, -1],
+            [1, 0],
+            [1, 1]
+        ];
+
+        ref Movable movable = entity.getComponent!Movable();
+        movable.velocity = moveDirections[uniform(0, 8)];
+    }
+}

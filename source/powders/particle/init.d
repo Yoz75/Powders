@@ -34,6 +34,7 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!ChangeGravitySystem.create();
         SystemFactory!CreateParticleSystem.create();
         SystemFactory!CombineSystem.create();
+        SystemFactory!GasSystem.create();
 
         SystemFactory!TemperatureSystem.create();
         SystemFactory!DeltaTemperatureSystem.create();
