@@ -95,4 +95,6 @@ public void destroyParticle(Entity entity)
             }
         }
     }
+
+    entity.addComponent!UpdateRenderableMarker();
 }
