@@ -35,6 +35,19 @@ public void buildParticle(Entity entity, SerializedParticleType type)
                             break LSwitch;
                         }
 
+                         enum componentAttribute = getComponentAttributeOf!(Component);
+                        enum onAddAction = componentAttribute.onAddAction;
+
+                        // By default, addComponent does nothing when there is a component already.
+                        // So we can do nothing when onAddAction is ignore, but if it's recreate, we should remove component and add it again with new value
+                        static if(onAddAction == OnAddAction.recreate)
+                        {
+                            if(entity.hasComponent!Component())
+                            {
+                                entity.removeComponent!Component();
+                            }
+                        }
+
                         // TLDR: add component using parsed from json value
                         // Find raw json data in AA of type by getting `Component` (attribute) of `Component` 
                         // (type, that contains this attribute) and parse it

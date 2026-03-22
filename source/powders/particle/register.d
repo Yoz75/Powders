@@ -32,11 +32,21 @@ public enum OnDestroyAction
     keep
 }
 
+/// What we should do with component when particle is being build, but component already exists?
+public enum OnAddAction
+{
+    /// Ignore that component already exists and don't change it's value
+    ignore = 0,
+    /// Remove component and add it again with new value
+    recreate
+}
+
 /// Attribute, that says that some struct is a component and can be serialized and deserialized as component
 public struct Component
 {
 public:
     OnDestroyAction onDestroyAction;
+    OnAddAction onAddAction;
 }
 
 /// Get all component structs in a module `name` as AliasSeq(Components...).
