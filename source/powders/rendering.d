@@ -18,6 +18,12 @@ public:
     @JsonizeField kc.Color color = kc.Color(0, 0, 0, 255);
 }
 
+/// Marker component that tells renderable system to update particle
+@Component(OnDestroyAction.destroy) public struct UpdateRenderableMarker
+{
+    mixin MakeJsonizable;
+}
+
 /// System, that starts other systems in powders.rendering module
 public final class InitialRenderSystem : BaseSystem
 {
@@ -134,77 +140,44 @@ private final class MapRenderSystem : BaseSystem
 /// Function type, that convert entity to color. E.g convert entity's temperature to color and etc
 alias renderModeConverter = kc.Color function(Entity entity);
 
-public final class RenderableSystem : MapEntitySystem!MapRenderable
+public final class RenderableSystem : System!UpdateRenderableMarker
 {
     private renderModeConverter currentRenderModeConverter;
 
-    /// A buffer, that contains prefious frame. It's needed to optimize updating.
-    private kc.Color[][] lastFrameBuffer;
-
-    /// Previous state of render mode. Needed to fix render modes after last optimization, bruh
-    private renderModeConverter lastRenderModeConverter;
-
     public override void onCreated()
     {
-        isPausable = false;
-
-        immutable int[2] resolution = globalMap.resolution;
-
-        lastFrameBuffer = new kc.Color[][](resolution[1], resolution[0]);
+        updateAll();
     }
-
-    protected override void onAdd(Entity entity)
+    protected override void onUpdated()
     {
-        markDirty(entity);
-    }
+        import kernel.simulation;
+        World world = Simulation.currentWorld;
+        auto data = ComponentPool!UpdateRenderableMarker.instance.getComponents(world);
+        Entity[] updatedEntities = new Entity[data.length];
 
-    protected override void onAfterUpdate()
-    {
-        if(lastRenderModeConverter != currentRenderModeConverter)
+        foreach(i, marker; data)
         {
-            foreach(row; chunks)
-            {
-                foreach(ref chunk_; row)
-                {
-                    chunk_.makeDirty();
-                }
-            }
+            immutable Entity entity = ComponentPool!UpdateRenderableMarker.instance.dense2Entity(world, i);
+            updatedEntities[i] = entity;
 
-            foreach(x, y, entity_; globalMap)
-            {
-                immutable auto color = currentRenderModeConverter(entity_);
-                lastFrameBuffer[y][x] = color;
-                MapRenderSystem.instance.mapSprite.setPixel([x, y], color);
-            }
+            immutable auto position = entity.getComponent!Position();
+
+            kc.Color color = currentRenderModeConverter(entity);        
+            MapRenderSystem.instance.mapSprite.setPixel(position.xy, color);
         }
-            
-        super.onUpdated();
-    }
-
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref MapRenderable renderable)
-    {
-        debug
-        {
-            bool hasPosition = entity.hasComponent!Position();
-            assert(hasPosition, "DEBUG: AT SOME REASON NOT EVERY ENTITY HAS A POSITION!!11!!1111111!!!!
-            KERNEL PANIC!11 SEGMENTATION FAULT (CORE ISN'T DAMPED)");
-        }
-
-        immutable auto position = entity.getComponent!Position();
-
-        if(lastFrameBuffer[position.xy[1]][position.xy[0]] == currentRenderModeConverter(entity)
-            && lastRenderModeConverter == currentRenderModeConverter)
-        {
-            chunk.makeClean();
-            return;
-        }
-
-        chunk.makeDirty();
-        lastRenderModeConverter = currentRenderModeConverter;
-
-        kc.Color color = lastFrameBuffer[position.xy[1]][position.xy[0]] = currentRenderModeConverter(entity);
         
-        MapRenderSystem.instance.mapSprite.setPixel(position.xy, color);
+        foreach(entity; updatedEntities)
+        {
+            entity.removeComponent!UpdateRenderableMarker();
+        }
+    }
+
+    private void updateAll()
+    {
+        foreach (x, y, entity; globalMap)
+        {
+            entity.addComponent!UpdateRenderableMarker();
+        }
     }
 }
 
@@ -290,6 +263,7 @@ public class RenderModeSystem : BaseSystem
     import powders.input;
 
     private RenderMode[] renderModes;
+    private RenderableSystem renderableSystemInstance;
 
     public this()
     {
@@ -303,13 +277,15 @@ public class RenderModeSystem : BaseSystem
 
     public renderModeConverter getCurrentRenderModeConverter()
     {
-        return (cast(RenderableSystem) RenderableSystem.instance).currentRenderModeConverter;
+        return renderableSystemInstance.currentRenderModeConverter;
     }
 
     public override void onCreated()
     {
+        renderableSystemInstance = cast(RenderableSystem) RenderableSystem.instance;
+
         addRenderMode(&color2color, Keys.one);
-        (cast(RenderableSystem) RenderableSystem.instance).currentRenderModeConverter = &color2color;
+        renderableSystemInstance.currentRenderModeConverter = &color2color;
     }
 
     protected override void onUpdated()
@@ -318,7 +294,8 @@ public class RenderModeSystem : BaseSystem
         {
             if(gameWindow.isKeyPressed(renderMode.key))
             {
-                (cast(RenderableSystem) RenderableSystem.instance).currentRenderModeConverter = renderMode.converter;
+                renderableSystemInstance.currentRenderModeConverter = renderMode.converter;
+                renderableSystemInstance.updateAll();
             }
         }
     }

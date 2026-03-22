@@ -62,7 +62,7 @@ public void buildParticle(Entity entity, SerializedParticleType type)
         }
     }
 
-    //entity.getComponent!Particle().typeId = type.typeID;
+    entity.addComponent!UpdateRenderableMarker();
 }
 
 public void destroyParticle(Entity entity)

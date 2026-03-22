@@ -48,7 +48,7 @@ public class WWorldConductorSystem : System!WWorldConductor
         ComponentPool!WWorldConductor.instance.reserve(Simulation.currentWorld, globalMap.resolution[0] * globalMap.resolution[1]);
         onUpdatedSparkle ~= (Entity self) 
         {
-            (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
+            self.addComponent!UpdateRenderableMarker();
         };
 
         assert(RenderModeSystem.instance !is null, "Render mode system is not initialized but we add render mode!!!");

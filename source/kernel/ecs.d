@@ -202,7 +202,7 @@ public struct Entity
 pragma(inline, true):
 
     /// Shortcut for ComponentPool!T.instance.addComponent. See ComponentPool.addComponent
-    public void addComponent(T)(T value) inout
+    public void addComponent(T)(T value = T.init) inout
     {
         ComponentPool!T.instance.addComponent(this, value);
     }    

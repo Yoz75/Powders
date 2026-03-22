@@ -111,7 +111,7 @@ public class TemperatureSystem : System!Temperature
         onTemperatureChanged ~= (Entity self) 
         {
             if(RenderModeSystem.instance.getCurrentRenderModeConverter() == &temperature2Color)
-                (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
+                self.addComponent!UpdateRenderableMarker();
         };
 
         assert(RenderModeSystem.instance !is null, "Render mode system is not initialized but we add render mode!!!");

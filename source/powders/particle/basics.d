@@ -83,8 +83,8 @@ public class MovableSystem : MapEntitySystem!Movable
     {
         onMoved ~= (Entity self, Entity other) 
         {
-            (cast(RenderableSystem) RenderableSystem.instance).markDirty(self);
-            (cast(RenderableSystem) RenderableSystem.instance).markDirty(other);
+            self.addComponent!UpdateRenderableMarker();
+            other.addComponent!UpdateRenderableMarker();
         };
     }
 
