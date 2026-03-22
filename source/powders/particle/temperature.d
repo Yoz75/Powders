@@ -18,7 +18,7 @@ public pure TemperatureScalar conductivity2coefficient(TemperatureScalar conduct
     return(log(1 + scale * conductivity)) / (log(scale * maxConductivity));
 }
 
-@Component(OnDestroyAction.setInit) public struct Temperature
+@Component(OnDestroyAction.setInit, OnAddAction.recreate) public struct Temperature
 {
     mixin MakeJsonizable;
 
