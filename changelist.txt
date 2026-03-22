@@ -38,3 +38,8 @@
 * Added particle statistics in up right corner!
 * Added profiling on P key!
 * Improved perfomance!!!
+* Added solidable and meltable components!
+* Reduced standard mup size to improve stability!
+* Added molten sand!
+* Fixed thermal conductivity of sand
+* Added delta temperature "boost" on shift key!

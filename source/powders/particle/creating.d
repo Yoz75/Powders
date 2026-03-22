@@ -27,7 +27,7 @@ public:
         self = new UIButton();
         self.position = position;
         self.size = size;
-        self.text = name ~ '\0';
+        self.text = name;
 
         self.onPressed ~= ()
         {
@@ -95,10 +95,7 @@ public class CreateParticleSystem : BaseSystem
             float[2] typeButtonPosition = typeButtonsAnchor;
             foreach(type; category.types)
             {
-                immutable size_t terminatorIndex = indexOfTerminator(type.typeID);
-                immutable size_t lastIndex = terminatorIndex == -1 ? type.typeID.length - 1 : terminatorIndex;
-
-                string name = cast(string) type.typeID[0..lastIndex].dup;
+                immutable string name = type.typeID;
                 categoryButton.addTypeButton(name, typeButtonPosition, typeButtonSize, type);
 
                 typeButtonPosition[] += typeButtonsMargin;
@@ -150,18 +147,4 @@ public class CreateParticleSystem : BaseSystem
             destroyParticle(globalMap.getAt(pos));
         }
     }
-}
-
-import powders.particle.basics : ParticleId;
-private size_t indexOfTerminator(ParticleId id)
-{
-    foreach(i, ch; id)
-    {
-        if(ch == char.init)
-        {
-            return i;
-        }
-    }
-
-    return -1;
 }

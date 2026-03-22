@@ -65,8 +65,8 @@ public @Component(OnDestroyAction.destroy) struct DeltaTemperature
 {
     mixin MakeJsonizable;
 public:
-
     @JsonizeField TemperatureScalar delta;
+    @JsonizeField TemperatureScalar boostMultiplier = 1;
 }
 
 /// Something that turns into something other when temperature more than critical point
@@ -235,10 +235,51 @@ public class DeltaTemperatureSystem : MapEntitySystem!DeltaTemperature
         ref DeltaTemperature delta = entity.getComponent!DeltaTemperature();
         ref Temperature temperature = entity.getComponent!Temperature();
 
-        temperature.value += delta.delta;
+        auto resultDelta = gameWindow.isKeyDown(Keys.leftShift) ? delta.delta * delta.boostMultiplier : delta.delta;
+
+        temperature.value += resultDelta;
         (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(entity);
 
         entity.removeComponent!DeltaTemperature();
+    }
+}
+
+public class MeltableSystem : MapEntitySystem!Meltable
+{
+    import powders.particle.building;
+    import powders.particle.register;
+    import powders.particle.loading;
+
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Meltable meltable)
+    {
+        Temperature temperature = ComponentPool!Temperature.instance.getComponent(entity);
+        if(temperature.value > meltable.criticalTemperature)
+        {
+            auto serializedResult = globalTypesDictionary[meltable.resultId];
+            destroyParticle(entity);
+            buildParticle(entity, serializedResult);
+            entity.addComponent(temperature);
+        }
+    }
+}
+
+public class SolidableSystem : MapEntitySystem!Solidable
+{
+    import powders.particle.building;
+    import powders.particle.register;
+    import powders.particle.loading;
+
+    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Solidable solidable)
+    {
+        Temperature temperature = ComponentPool!Temperature.instance.getComponent(entity);
+
+        if(temperature.value < solidable.criticalTemperature)
+        {
+            auto serializedResult = globalTypesDictionary[solidable.resultId];
+            destroyParticle(entity);
+            buildParticle(entity, serializedResult);
+            entity.addComponent(temperature);
+        }
     }
 }
 

@@ -34,8 +34,11 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!ChangeGravitySystem.create();
         SystemFactory!CreateParticleSystem.create();
         SystemFactory!CombineSystem.create();
+
         SystemFactory!TemperatureSystem.create();
         SystemFactory!DeltaTemperatureSystem.create();
+        SystemFactory!MeltableSystem.create();
+        SystemFactory!SolidableSystem.create();
 
         SystemFactory!WWorldConductorSystem.create();
         SystemFactory!WWorldSparkleSystem.create();

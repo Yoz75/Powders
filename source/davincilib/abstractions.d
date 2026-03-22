@@ -142,7 +142,8 @@ public enum Keys
     right = 262,
     left,
     down,
-    up
+    up,
+    leftShift = 340
     // Currently i don't need more keys.
 }
 
