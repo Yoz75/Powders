@@ -24,6 +24,11 @@ public struct ComponentPool(T)
     private onAddAction[] onAddDelegates;
     private onRemoveAction[] onRemoveDelegates;
 
+    public Entity dense2Entity(World world, size_t denseId)
+    {
+        return Entity(world, entities[world.id][denseId]);
+    }
+
     /// Reserve space for components in the world
     /// Params:
     ///   world = the world

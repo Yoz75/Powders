@@ -177,7 +177,7 @@ public class GravitySystem : System!Gravity
 
         foreach(i, ref movable; data)
         {
-            Entity entity = Entity(Simulation.currentWorld, i);
+            Entity entity = ComponentPool!Movable.instance.dense2Entity(Simulation.currentWorld, i);
 
             if(entity.hasComponent!Gravity())
             {
