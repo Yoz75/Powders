@@ -43,3 +43,5 @@
 * Added molten sand!
 * Fixed thermal conductivity of sand
 * Added delta temperature "boost" on shift key!
+* Added gases!
+* Added steam! not a game store one :(
