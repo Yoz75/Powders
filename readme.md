@@ -1,7 +1,5 @@
 # Powders
-<img width="1438" height="740" alt="изображение" src="https://github.com/user-attachments/assets/2d2dd3a3-aa6e-4cde-b1d3-7d9c13365125" />
-
-
+<img width="1742" height="855" alt="изображение" src="https://github.com/user-attachments/assets/b4e2b4a2-bc1b-4d07-a6b4-18b8a8ed2c09" />
 
 Powders is a simple [TPT](https://github.com/The-Powder-Toy/The-Powder-Toy)-like game. The key feature -- you can add your own types without any coding! 
 This game uses Entity-Component-System, you have to modify game's code to add new components, but you can just add a directory and some .json files to build your own particle type from already 
