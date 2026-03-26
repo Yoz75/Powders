@@ -10,6 +10,10 @@ public interface IShape
 {
     /// Set the size of the shape
     public void setScale(in int scale);
+
+    /// Get the scale of the shape
+    /// Returns: scale of the shape
+    public int getScale();
     
     /// Place shape at `position` and fill all it's cells with `type`
     public void fillAtPosition(in int[2] position, in SerializedParticleType type);
@@ -41,6 +45,14 @@ package class Rectangle : IShape
         this.scale = scale;
         shapeSprite.free();
         shapeSprite = Sprite.create([scale, scale], shapeColor);
+    }
+
+    
+    /// Get the scale of the shape
+    /// Returns: scale of the shape
+    public int getScale()
+    {
+        return scale;
     }
     
     /// Place shape at `position` and fill all it's cells with `type`

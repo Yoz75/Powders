@@ -53,7 +53,9 @@ private class MovementSystem : BaseSystem
         Camera camera = gameWindow.getCamera();
 
         float wheel = gameWindow.getMouseWheelMove();
-        if (wheel != 0)
+        import kernel.todo;
+        mixin TODO!("Rework input! Maybe like in Unity? But I don't want to always check cntrol etc.");
+        if (wheel != 0 && !gameWindow.isKeyDown(Keys.leftControl))
         {            
 
             float[2] mouseWorldPos = gameWindow.getMouseWorldPosition();
