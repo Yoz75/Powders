@@ -45,3 +45,5 @@
 * Added delta temperature "boost" on shift key!
 * Added gases!
 * Added steam! not a game store one :(
+* Heat and cool are heat and cool less than in 0.3.0
+* Added huge heat and huge cool that heat and cool as heat and cool in 0.3.0!
