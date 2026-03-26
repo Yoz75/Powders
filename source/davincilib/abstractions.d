@@ -146,7 +146,15 @@ public enum Keys
     down,
     up,
     tab = 258,
-    leftShift = 340
+    leftShift = 340,
+    leftControl = 341,
+    leftAlt = 342,
+    leftSuper = 343,
+    rightShift = 344,
+    rightControl = 345,
+    KEY_RIGHT_ALT = 346,
+    KEY_RIGHT_SUPER = 347,
+    KEY_KB_MENU = 348,
     // Currently i don't need more keys.
 }
 
