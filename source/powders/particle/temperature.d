@@ -232,12 +232,13 @@ public class DeltaTemperatureSystem : MapEntitySystem!DeltaTemperature
 {
     protected override void onAdd(Entity entity)
     {
+        immutable deltaTime = gameWindow.getDeltaTime();
         ref DeltaTemperature delta = entity.getComponent!DeltaTemperature();
         ref Temperature temperature = entity.getComponent!Temperature();
 
         auto resultDelta = gameWindow.isKeyDown(Keys.leftShift) ? delta.delta * delta.boostMultiplier : delta.delta;
 
-        temperature.value += resultDelta;
+        temperature.value += resultDelta * deltaTime;
         (cast(TemperatureSystem) TemperatureSystem.instance).updateTemperatureOf(entity);
 
         entity.removeComponent!DeltaTemperature();
