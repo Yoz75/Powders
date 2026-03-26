@@ -51,3 +51,6 @@
 * Added heat transfer fluid
 * Added bew Moltens category!
 * Added FPS counter
+
+0.5.0:
+Now delta temperature scales with time
