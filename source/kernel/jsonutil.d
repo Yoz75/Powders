@@ -26,19 +26,19 @@ public mixin template MakeJsonizable()
 /// Params:
 ///   path = path to file
 /// Returns: an instance of T or error code if something went wrong
-public Optional!(T, JSONErrorCode) loadFromFile(T)(const string path)
+public Result!(T, JSONErrorCode) loadFromFile(T)(const string path)
 {
-    if(!exists(path)) return Optional!(T, JSONErrorCode)(JSONErrorCode.FileNotFound);
+    if(!exists(path)) return Result!(T, JSONErrorCode)(JSONErrorCode.FileNotFound);
 
     T result;
     try
     {
         result = readJSON!T(path);
-        return Optional!(T, JSONErrorCode)(result);
+        return Result!(T, JSONErrorCode)(result);
     }
     catch(JsonizeTypeException ex)
     {
-        return Optional!(T, JSONErrorCode)(JSONErrorCode.ParseError);    
+        return Result!(T, JSONErrorCode)(JSONErrorCode.ParseError);    
     }
     
 }

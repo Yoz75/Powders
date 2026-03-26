@@ -7,7 +7,7 @@ import std.traits : isNumeric;
 import raylib;
 import raygui;
 
-struct Optional(TValue, TError)
+package struct Optional(TValue, TError)
 {
 public:
 

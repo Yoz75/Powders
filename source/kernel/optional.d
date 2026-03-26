@@ -1,6 +1,17 @@
 module kernel.optional;
 
-struct Optional(TValue, TError)
+/// Type that tells that Result has `TError.init` value.
+/// ------
+/// Result!(T, U) result;
+/// result = None();
+/// ------
+struct None
+{
+}
+
+alias Optional(TValue) = Result!(TValue, bool);
+
+struct Result(TValue, TError)
 {
 public:
 
@@ -24,18 +35,6 @@ public:
         hasValue = false;
     }
 
-    /// Create optional with all members set (use when would be faster to explicitly set hasValue, e.g avoid branching)
-    /// Params:
-    ///   value = 
-    ///   error = 
-    ///   hasValue = 
-    this(TValue value, TError error, bool hasValue)
-    {
-        this.value = value;
-        this.error = error;
-        this.hasValue = hasValue;
-    }
-
     void opAssign(TValue value)
     {
         this.value = value;
@@ -45,6 +44,12 @@ public:
     void opAssign(TError value)
     {
         error = value;
+        hasValue = false;
+    }
+
+    void opAssign(None none)
+    {
+        error = TError.init;
         hasValue = false;
     }
 }

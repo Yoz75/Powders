@@ -14,7 +14,7 @@ import jsonizer;
 /// Params:
 ///   entity = the entity
 ///   type = the particle's type
-public void buildParticle(Entity entity, SerializedParticleType type)
+public void buildParticle(Entity entity, in SerializedParticleType type)
 {
     foreach(key, value; type.components)
     {

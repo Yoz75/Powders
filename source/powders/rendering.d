@@ -91,6 +91,96 @@ public int[2] relativeScreenPos2ScreenPos(float[2] relativePosition)
     return absolutePosition;
 }
 
+
+/// Get pixel position on texture, pointed by mouse
+public int[2] mouse2TexturePosition(ref in Sprite sprite)
+{
+    import powders.input;
+    import std.math : cos, sin, PI;
+
+    immutable float[2] position = gameWindow.getMousePosition();
+
+    immutable cx = sprite.origin[0] * sprite.texture.width * sprite.scale[0];
+    immutable cy = sprite.origin[1] * sprite.texture.height * sprite.scale[1];
+
+    immutable float lx = position[0] - cx;
+    immutable float ly = position[1] - cy;
+
+    immutable rad = -sprite.rotation * (PI / 180);
+    immutable cosr = cos(rad);
+    immutable sinr = sin(rad);
+
+    immutable rx = lx * cosr - ly * sinr;
+    immutable ry = lx * sinr + ly * cosr;
+
+    immutable tx = rx / sprite.scale[0] + sprite.origin[0] * sprite.texture.width;
+    immutable ty = ry / sprite.scale[1] + sprite.origin[1] * sprite.texture.height;
+
+    if (tx < 0 || ty < 0 || tx >= sprite.texture.width || ty >= sprite.texture.height)
+        return [-1, -1];
+    return [cast(int)tx, cast(int)ty];
+} 
+
+/// Get pixel position on texture, pointed by mouse, but with world coordinates
+public int[2] mouseWorld2TexturePosition(ref in Sprite sprite)
+{
+    import powders.input;
+    import std.math;
+
+    immutable float[2] position = gameWindow.getMouseWorldPosition();
+
+    immutable cx = sprite.origin[0] * sprite.texture.width * sprite.scale[0];
+    immutable cy = sprite.origin[1] * sprite.texture.height * sprite.scale[1];
+
+    immutable float lx = position[0] - cx;
+    immutable float ly = position[1] - cy;
+    
+    immutable rad = -sprite.rotation * (PI / 180);
+    immutable cosr = cos(rad);
+    immutable sinr = sin(rad);
+
+    immutable rx = lx * cosr - ly * sinr;
+    immutable ry = lx * sinr + ly * cosr;
+
+    immutable tx = rx / sprite.scale[0] + sprite.origin[0] * sprite.texture.width;
+    immutable ty = ry / sprite.scale[1] + sprite.origin[1] * sprite.texture.height;
+
+    if (tx < 0 || ty < 0 || tx >= sprite.texture.width || ty >= sprite.texture.height)
+        return [-1, -1];
+    return [cast(int) tx.round(), cast(int) ty.round()];
+} 
+
+/// Convert pixel position on texture to world position
+/// Params:
+///   sprite = the sprite witch texture we grab
+///   position = the position on this sprite
+/// Returns: 
+public float[2] texture2WorldPosition(in Sprite sprite, in int[2] position)
+{
+    import std.math;
+    
+    immutable float lx = position[0] * sprite.scale[0];
+    immutable float ly = position[1] * sprite.scale[1];
+
+    immutable rad = sprite.rotation * (PI / 180);
+    immutable cosr = cos(rad);
+    immutable sinr = sin(rad);
+
+    immutable rx = lx * cosr - ly * sinr;
+    immutable ry = lx * sinr + ly * cosr;
+
+    return [rx + sprite.position[0], ry + sprite.position[1]];
+}
+
+public float[2] map2WorldPosition(in int[2] mapPosition)
+{
+    assert(MapRenderSystem.instance !is null, 
+        "map2WorldPosition was called, but MapRenderSystem isn't initialized yet!");
+
+    return texture2WorldPosition(MapRenderSystem.instance.mapSprite, mapPosition);
+}
+
+
 //ТУДУ: сделать наследников этого класса (на каждый рендер мод по одному) и чтоб они там себе внутри буфферы заполняли и выводили, а не это говно с чанками
 private abstract class MapShaderProvider
 {
@@ -180,64 +270,6 @@ public final class RenderableSystem : System!UpdateRenderableMarker
         }
     }
 }
-
-/// Get pixel position on texture, pointed by mouse
-public int[2] mouse2TexturePosition(ref in Sprite sprite)
-{
-    import powders.input;
-    import std.math : cos, sin, PI;
-
-    immutable float[2] position = gameWindow.getMousePosition();
-
-    immutable cx = sprite.origin[0] * sprite.texture.width * sprite.scale[0];
-    immutable cy = sprite.origin[1] * sprite.texture.height * sprite.scale[1];
-
-    immutable float lx = position[0] - cx;
-    immutable float ly = position[1] - cy;
-
-    immutable rad = -sprite.rotation * (PI / 180);
-    immutable cosr = cos(rad);
-    immutable sinr = sin(rad);
-
-    immutable rx = lx * cosr - ly * sinr;
-    immutable ry = lx * sinr + ly * cosr;
-
-    immutable tx = rx / sprite.scale[0] + sprite.origin[0] * sprite.texture.width;
-    immutable ty = ry / sprite.scale[1] + sprite.origin[1] * sprite.texture.height;
-
-    if (tx < 0 || ty < 0 || tx >= sprite.texture.width || ty >= sprite.texture.height)
-        return [-1, -1];
-    return [cast(int)tx, cast(int)ty];
-} 
-
-/// Get pixel position on texture, pointed by mouse, but with world coordinates
-public int[2] mouseWorld2TexturePosition(ref in Sprite sprite)
-{
-    import powders.input;
-    import std.math;
-
-    immutable float[2] position = gameWindow.getMouseWorldPosition();
-
-    immutable cx = sprite.origin[0] * sprite.texture.width * sprite.scale[0];
-    immutable cy = sprite.origin[1] * sprite.texture.height * sprite.scale[1];
-
-    immutable float lx = position[0] - cx;
-    immutable float ly = position[1] - cy;
-    
-    immutable rad = -sprite.rotation * (PI / 180);
-    immutable cosr = cos(rad);
-    immutable sinr = sin(rad);
-
-    immutable rx = lx * cosr - ly * sinr;
-    immutable ry = lx * sinr + ly * cosr;
-
-    immutable tx = rx / sprite.scale[0] + sprite.origin[0] * sprite.texture.width;
-    immutable ty = ry / sprite.scale[1] + sprite.origin[1] * sprite.texture.height;
-
-    if (tx < 0 || ty < 0 || tx >= sprite.texture.width || ty >= sprite.texture.height)
-        return [-1, -1];
-    return [cast(int) tx.round(), cast(int) ty.round()];
-} 
 
 /// Render modes
 public enum RenderMode

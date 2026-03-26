@@ -32,9 +32,11 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!PowderSystem.create();
         SystemFactory!AdhesionSystem.create();
         SystemFactory!ChangeGravitySystem.create();
-        SystemFactory!CreateParticleSystem.create();
         SystemFactory!CombineSystem.create();
         SystemFactory!GasSystem.create();
+
+        SystemFactory!CreateParticleSystem.create();
+        SystemFactory!ShapeChangerSystem.create();
 
         SystemFactory!TemperatureSystem.create();
         SystemFactory!DeltaTemperatureSystem.create();

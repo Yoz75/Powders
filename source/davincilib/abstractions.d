@@ -17,7 +17,7 @@ mixin template AddSpriteFields()
 import std.traits;
 import std.typetuple;
 /// Template, that validates that `TSprite` is a valid sprite type. To be valid type `TSprite` must have next members:
-///     color, scale, origin, rotation -- I think there's clear everything.
+///     color, scale, origin, rotation, position -- I think there's clear everything.
 ///     create(int[2] resolution, Color color, IWindow window) -- static function, that returns a new `TSprite`. This method should be called in the render thread.
 ///     setPixel(int[2], Color color) -- self-describing code, bro
 ///     applyChanges() -- a function, that applies made by `setPixel` changes or does nothing (implementation specific)
@@ -145,6 +145,7 @@ public enum Keys
     left,
     down,
     up,
+    tab = 258,
     leftShift = 340
     // Currently i don't need more keys.
 }
