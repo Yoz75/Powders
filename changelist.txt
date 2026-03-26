@@ -48,3 +48,5 @@
 * Heat and cool are heat and cool less than in 0.3.0
 * Added huge heat and huge cool that heat and cool as heat and cool in 0.3.0!
 * Added shapes for particle creating with variable size!
+* Added heat transfer fluid
+* Added FPS counter
