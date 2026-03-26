@@ -11,6 +11,7 @@ mixin template AddSpriteFields()
     public dvc.Color color;
     public float[2] scale = [1, 1], origin = [0.5, 0.5];
     public float rotation = 0;
+    public float[2] position = [0, 0];
 }
 
 import std.traits;
@@ -28,6 +29,7 @@ template isSpriteType(TSprite)
         is(typeof(TSprite.scale) == float[2]) &
         is(typeof(TSprite.origin) == float[2]) &
         is(typeof(TSprite.rotation) == float) &
+        is(typeof(TSprite.position) == float[2]) &
 
         isFunction!(TSprite.create) &
         isFunction!(TSprite.setPixel) &
@@ -184,7 +186,7 @@ public:
     void renderAtRelativeScreenPos(float[2] position, TSprite sprite);
     
     /// Render an instance of `TSprite` at world position
-    void renderAtWorldPos(float[2] position, TSprite sprite);
+    void renderAtWorldPos(TSprite sprite);
 
     /// Clear screen using black color
     void clearScreen();

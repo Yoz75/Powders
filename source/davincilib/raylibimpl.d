@@ -243,10 +243,10 @@ public class Window : IWindow!(Sprite, Camera)
     }
     
     /// Render an instance of `TSprite` at world position
-    void renderAtWorldPos(float[2] position, Sprite sprite)
+    void renderAtWorldPos(Sprite sprite)
     {
         BeginMode2D(camera);
-        renderSpriteAtScreen(position, sprite);
+        renderSpriteAtScreen(sprite.position, sprite);
         EndMode2D();        
     }
 

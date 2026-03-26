@@ -133,7 +133,7 @@ private final class MapRenderSystem : BaseSystem
     protected override void onBeforeUpdate()
     {
         mapSprite.applyChanges();
-        gameWindow.renderAtWorldPos([0, 0], mapSprite);
+        gameWindow.renderAtWorldPos(mapSprite);
     }
 }
 
