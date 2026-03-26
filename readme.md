@@ -15,6 +15,7 @@ existing components!
 * Currently you can change current spawn type by buttons on screen.
 * 1 -- select basic render mode
 * 2 -- select temperature render mode
+* P -- profile the game. Could be buggy and made for non-fullscreen mode when debug
 
 ## Building
 * build.bat -- debug build (very laggy!)
