@@ -108,11 +108,11 @@ public abstract class MapEntitySystem(T) : System!T
         {
             foreach(i, ref chunk; row)
             {
-                //if(chunk.state == ChunkState.clean) continue;
-                /*else if(chunk.state == ChunkState.becomeDirty)
+                if(chunk.state == ChunkState.clean) continue;
+                else if(chunk.state == ChunkState.becomeDirty)
                 {
                     chunk.state = ChunkState.dirty;
-                }  */              
+                }          
 
                 if(useBeforeUpdate)
                 {

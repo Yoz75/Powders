@@ -8,6 +8,7 @@ import powders.io;
 import powders.rendering;
 
 alias ParticleId = string;
+alias VelocityScalar = byte;
 
 /// Component, that has every particle
 @Component(OnDestroyAction.destroy) public struct Particle
@@ -19,7 +20,7 @@ public:
     ParticleId typeId;
 }
 
-public enum GravityDirection : int[2]
+public enum GravityDirection : VelocityScalar[2]
 {
     none = [0, 0],
     down = [0, 1],
@@ -34,7 +35,7 @@ public enum GravityDirection : int[2]
 
 public:
     static GravityDirection direction = GravityDirection.down;
-    static float gravity = 9.81;
+    static VelocityScalar gravity = 10;
 }
 
 /// Component that says that this entity can move
@@ -44,9 +45,9 @@ public:
 
 public:
     bool isFalling;
-    static float maxVelocity = 512;
+    static VelocityScalar maxVelocity = cast(VelocityScalar) 100;
     /// Current velocity of the particle [x, y] in cells per update
-    float[2] velocity = [0, 0];
+    VelocityScalar[2] velocity = [0, 0];
 }
 
 // A component, that indicates that this particle should slip like sand
@@ -104,10 +105,9 @@ public class MovableSystem : MapEntitySystem!Movable
         if (movable.velocity[0] == 0 && movable.velocity[1] == 0)
             return;
 
-        movable.velocity[0] = movable.velocity[0].clamp(-Movable.maxVelocity, Movable.maxVelocity);
-        movable.velocity[1] = movable.velocity[1].clamp(-Movable.maxVelocity, Movable.maxVelocity);
+        movable.velocity[0] = movable.velocity[0].clamp(cast(VelocityScalar) -Movable.maxVelocity, Movable.maxVelocity);
+        movable.velocity[1] = movable.velocity[1].clamp(cast(VelocityScalar) -Movable.maxVelocity, Movable.maxVelocity);
 
-        (cast(PowderSystem) PowderSystem.instance).markUpdated(entity);
         (cast(AdhesionSystem) AdhesionSystem.instance).markUpdated(entity);
         
 
@@ -221,31 +221,24 @@ public class ChangeGravitySystem : BaseSystem
     }
 }
 
-public class PowderSystem : MapEntitySystem!Powder
+public class PowderSystem : System!Powder
 {
-    private void markUpdated(Entity entity)
+    protected override void onUpdated()
     {
-        immutable int[2] position = entity.getComponent!Position().xy;
-        immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
+        auto data = ComponentPool!Powder.instance.getComponents(currentWorld);
 
-        chunks[chunkIndex[1]][chunkIndex[0]].makeDirty();
+        foreach(i, ref powder; data)
+        {
+            Entity entity = ComponentPool!Powder.instance.dense2Entity(currentWorld, i);
+            updateComponent(entity, powder);
+        }
     }
 
-    protected override void onAdd(Entity entity)
-    {
-        markUpdated(entity);
-    }
-
-    protected override void updateComponent(Entity entity, ref Chunk chunk, ref Powder powder)
+    pragma(inline, true)
+    private void updateComponent(Entity entity, ref Powder powder)
     {
         static uint fallDirection;
         fallDirection++;
-
-        chunk.makeClean();
-        if(!entity.hasComponent!Movable())
-        {
-            throw new Exception("Powder component can be only on Movable particles!");
-        }
 
         immutable auto position = entity.getComponent!Position();
         immutable int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
@@ -257,16 +250,13 @@ public class PowderSystem : MapEntitySystem!Powder
         }
 
         if(entity.getComponent!Movable().isFalling) return;
-
-        chunk.makeDirty();
-
         /*
                -1 0 1
             -1 [][][]
              0 []xx[]
              1 [][][]
         */
-        enum float[2][2][GravityDirection] biases = 
+        immutable VelocityScalar[2][2][GravityDirection] biases = 
         [
             GravityDirection.none: [[0, 0], [0, 0]],
             GravityDirection.down: [[1, 1], [-1, 1]],
@@ -325,7 +315,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
              1 [][][]
         */
         // should be int[2][2], but float[2][2] because of boilerplate
-        immutable float[2][2][GravityDirection] direction2Biases = 
+        immutable VelocityScalar[2][2][GravityDirection] direction2Biases = 
         [
             GravityDirection.none: [[0, 0], [0, 0]],
             GravityDirection.down: [[-1, 0], [1, 0]],
@@ -335,7 +325,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
         ];
 
 
-        float[2][2] resultBiases;
+        VelocityScalar[2][2] resultBiases;
 
         if(uniform01() >= adhesion.adhesion)
         {
@@ -390,7 +380,7 @@ public class GasSystem : MapEntitySystem!Gas
     {
         import std.random;
 
-        immutable float[2][8] moveDirections = 
+        immutable VelocityScalar[2][8] moveDirections = 
         [
             [-1, -1],
             [-1, 0],
