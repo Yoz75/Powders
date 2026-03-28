@@ -30,10 +30,10 @@ public struct Version
 
     /// Get version's representation as string
     /// Returns: 
-    public string toString() const pure
+    public string toString() shared const pure
     {
         import std.conv : to;
 
-        return major.to!string ~ '.' ~ minor.to!string ~ '.' ~ patch.to!string ~ '.';
+        return major.to!string ~ '.' ~ minor.to!string ~ '.' ~ patch.to!string;
     }
 }
