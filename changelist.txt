@@ -53,4 +53,6 @@
 * Added FPS counter
 
 0.5.0:
-Now delta temperature scales with time
+* Now delta temperature scales with time
+* Added window settings! You can change fullscreenness!
+* Optimized particle building!
