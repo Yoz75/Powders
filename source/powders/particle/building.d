@@ -10,6 +10,22 @@ import powders.particle.register;
 import powders.particle.loading;
 import jsonizer;
 
+private T getCachedComponent(T)(const SerializedParticleType type)
+{
+    import kernel.optional;
+    /// Don't use `T value` here and value == T.init. This fails at some reason with DeltaTemperature and some other components
+    static Optional!T[const SerializedParticleType] type2Value;
+    auto value = type in type2Value;
+
+    if(value is null || !value.hasValue)
+    {
+        import std.stdio; writeln("qewqwe");
+        type2Value[type] = fromJSONString!T(type.components[T.stringof]);
+    }
+
+    return type2Value[type].value;
+}
+
 /// Build entity as a some particle type
 /// Params:
 ///   entity = the entity
@@ -35,7 +51,7 @@ public void buildParticle(Entity entity, in SerializedParticleType type)
                             break LSwitch;
                         }
 
-                         enum componentAttribute = getComponentAttributeOf!(Component);
+                        enum componentAttribute = getComponentAttributeOf!(Component);
                         enum onAddAction = componentAttribute.onAddAction;
 
                         // By default, addComponent does nothing when there is a component already.
@@ -51,8 +67,7 @@ public void buildParticle(Entity entity, in SerializedParticleType type)
                         // TLDR: add component using parsed from json value
                         // Find raw json data in AA of type by getting `Component` (attribute) of `Component` 
                         // (type, that contains this attribute) and parse it
-                        Component component = 
-                        fromJSONString!Component(type.components[Component.stringof]);
+                        Component component = getCachedComponent!Component(type);
                         entity.addComponent!Component(component);
                     break LSwitch;
                 }
