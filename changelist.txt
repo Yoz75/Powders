@@ -56,3 +56,5 @@
 * Now delta temperature scales with time
 * Added window settings! You can change fullscreenness!
 * Optimized particle building!
+* Optimized powders system by changing velocity from 32 bit float to 8bit signed byte
+* Maximal velocity of particle now 100.
