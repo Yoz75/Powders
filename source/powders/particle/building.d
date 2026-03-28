@@ -19,7 +19,6 @@ private T getCachedComponent(T)(const SerializedParticleType type)
 
     if(value is null || !value.hasValue)
     {
-        import std.stdio; writeln("qewqwe");
         type2Value[type] = fromJSONString!T(type.components[T.stringof]);
     }
 
