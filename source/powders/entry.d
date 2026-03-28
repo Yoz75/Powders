@@ -111,9 +111,6 @@ public void powdersMain()
     programVersion = Version.fromString(import("appVersion.txt"));
 
     World gameWorld = World.create();
-    gameWindow = new Window();
-    gameWindow.initWindow([1200, 900], true, "powders!");
-    gameWindow.setTargetFPS(240);
 
     Simulation.run!(CreateMapSystem, InitialRenderSystem, InitialInputSystem,
      InitialParticlesSystem, InitialUISystem, ExitSystem, TimeControlSystem, InitialStatisticsSystem, ProfileSystem)

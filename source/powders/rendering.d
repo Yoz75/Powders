@@ -27,14 +27,45 @@ public:
 /// System, that starts other systems in powders.rendering module
 public final class InitialRenderSystem : BaseSystem
 {
+
     public override void onCreated()
     {
+        SystemFactory!InitWindowSystem.create();
         SystemFactory!InitRendererSystem.create();
         SystemFactory!MapRenderSystem.create();
         SystemFactory!RenderableSystem.create();
         SystemFactory!RenderModeSystem.create();
     }
 }   
+
+private final class InitWindowSystem : BaseSystem
+{
+    import kernel.versions;
+    import powders.path;
+    import powders.io;
+
+    private struct WindowSettings
+    {
+        mixin MakeJsonizable;
+    public:
+        @JsonizeField int[2] resolution = [1200, 900];
+        @JsonizeField bool isFullscreen = true;
+        @JsonizeField string title = "powders!";
+        @JsonizeField int targetFPS = 240;
+    }
+
+    private enum settingsFileName = "window.json";
+        
+    public override void onCreated()
+    {
+        WindowSettings settings;
+        loadOrSave!WindowSettings(getSettingsPath() ~ settingsFileName, settings);
+
+        gameWindow = new Window();
+        gameWindow.initWindow(settings.resolution, settings.isFullscreen, settings.title ~ ' ' ~ programVersion.toString());
+        gameWindow.setTargetFPS(settings.targetFPS);
+    }
+}
 
 private final class InitRendererSystem : BaseSystem
 {
