@@ -9,7 +9,11 @@ struct None
 {
 }
 
-alias Optional(TValue) = Result!(TValue, bool);
+struct OptionalError
+{    
+}
+
+alias Optional(TValue) = Result!(TValue, OptionalError);
 
 struct Result(TValue, TError)
 {
@@ -32,6 +36,12 @@ public:
     this(TError error)
     {
         this.error = error;
+        hasValue = false;
+    }
+
+    this(None none)
+    {
+        this.error = TError.init;
         hasValue = false;
     }
 
