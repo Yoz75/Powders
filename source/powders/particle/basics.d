@@ -175,9 +175,12 @@ public class MovableSystem : MapEntitySystem!Movable
 public class GravitySystem : System!Gravity
 {
     import kernel.simulation;
+    import powders.timecontrol;
 
     protected override void onUpdated()
     {
+        if(globalGameState == GameState.pause) return;
+        
         auto data = ComponentPool!Movable.instance.getComponents(Simulation.currentWorld);
 
         foreach(i, ref movable; data)
