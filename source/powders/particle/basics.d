@@ -226,8 +226,10 @@ public class ChangeGravitySystem : BaseSystem
 
 public class PowderSystem : System!Powder
 {
+    private uint fallDirection;
     protected override void onUpdated()
     {
+        fallDirection++;
         auto data = ComponentPool!Powder.instance.getComponents(currentWorld);
 
         foreach(i, ref powder; data)
@@ -240,17 +242,14 @@ public class PowderSystem : System!Powder
     pragma(inline, true)
     private void updateComponent(Entity entity, ref Powder powder)
     {
-        static uint fallDirection;
-        fallDirection++;
-
         immutable auto position = entity.getComponent!Position();
         immutable int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
 
-        // at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
+        /* at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
         if(!globalMap.getAt(belowPosition).hasComponent!Particle)
         {
             return;
-        }
+        }*/
 
         if(entity.getComponent!Movable().isFalling) return;
         /*
