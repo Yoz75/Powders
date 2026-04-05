@@ -60,3 +60,4 @@
 * Maximal velocity of particle now 100.
 * Fixed gravity applied even when game was paused
 * Moved settings and particles to the project directory
+* Fixed powder system bug
