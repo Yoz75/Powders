@@ -61,3 +61,4 @@
 * Fixed gravity applied even when game was paused
 * Moved settings and particles to the project directory
 * Fixed powder system bug
+* Fixed garbage at the and of buttons
