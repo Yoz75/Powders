@@ -64,5 +64,6 @@
 	],
 	"license": "MIT",
 	"name": "powders",
-	"targetPath": "./bin/"
+	"targetPath": "./bin/",
+	"copyFiles": ["runtimeResources/settings/", "runtimeResources/particles/", "raylib.dll"]
 }

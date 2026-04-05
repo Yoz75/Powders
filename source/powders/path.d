@@ -20,6 +20,20 @@ string getAppDataPath()
     return cwd ~ pathSeparator; 
 }   
 
+string getParticlesPath()
+{
+    enum particlesFolderName = "particles";
+
+    immutable string path = getAppDataPath ~ particlesFolderName ~ pathSeparator;
+
+    if(!exists(path))
+    {
+        mkdirRecurse(path);
+    }
+
+    return path;
+}
+
 string getSettingsPath()
 {
     enum settingsFolderName = "settings";

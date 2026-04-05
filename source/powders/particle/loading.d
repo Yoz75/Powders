@@ -53,7 +53,7 @@ public struct Category
 ///Throws: `ParticleTypeLoadException`
 public void loadParticleCategories()
 {
-    immutable string particlesDirectory = getSettingsPath() ~ "Particles" ~ pathSeparator;
+    immutable string particlesDirectory = getParticlesPath() ~ pathSeparator;
 
     if(!exists(particlesDirectory))
     {
