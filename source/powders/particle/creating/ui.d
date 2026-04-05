@@ -27,7 +27,7 @@ public:
     {
         UIButton typeButton = new UIButton();
 
-        typeButton.text = name;
+        typeButton.text = name ~ '\0';
         typeButton.position = position;
         typeButton.size = size;
         typeButton.onPressed ~= onPressed;

@@ -49,7 +49,7 @@ public class CreateParticleSystem : BaseSystem
 
         foreach(i, category; globalLoadedCategories)
         {
-            auto categoryButton = new CategoryButton(category.name, categoryButtonPosition, categoryButtonSize);
+            auto categoryButton = new CategoryButton(category.name ~ '\0', categoryButtonPosition, categoryButtonSize);
 
             // Why so strange? See https://forum.dlang.org/thread/pjrdlgtahzfppoxojxls@forum.dlang.org
             auto categoryHandler = (ctg) 
