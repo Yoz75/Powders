@@ -15,6 +15,13 @@ existing components!
 * 2 -- select temperature render mode
 * P -- profile the game. Could be buggy and made for non-fullscreen mode when debug
 
+## Branches
+* main -- the main branch. Contains last fully made mechanics and MUST be compilable.
+* dev -- the development branch. Contains last changes, may be compilable or may not, maybe these features will be added to the release or maybe not.
+* temperatureMultithreading -- my experiment of multithreaded temperature (this branch is pretty old, now a compute shader processes the temperature system)
+* ecsRework -- an attempt to rework the ECS, some features from this one currently merged into main
+* separatedRenderThread -- an experiment of separating rendering to another thread. This implementation doesn't boost fps but boosts problems and spagetty code (I removed separated render thread because it was easier to implement shaders without a separated thread)
+
 ## Building
 * build.bat -- debug build (very laggy!)
 * buildr.bat -- regular release buildr
