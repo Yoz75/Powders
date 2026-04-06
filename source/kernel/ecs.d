@@ -258,7 +258,7 @@ public final abstract class SystemFactory(T)
         import kernel.simulation : Simulation;
         
         auto system = new T();
-        system.currentWorld = Simulation.currentWorld;
+        system.currentWorld = &Simulation.currentWorld;
         systems ~= system;
 
         system.onCreated();
@@ -270,7 +270,7 @@ public final abstract class SystemFactory(T)
 /// Base class for systems. Needed only beause System(T) is tenplate class
 public abstract class BaseSystem
 {
-    protected World currentWorld;
+    protected World* currentWorld;
 
     /// Update system for each component
     public final void update()
