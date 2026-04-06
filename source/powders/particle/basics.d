@@ -181,11 +181,11 @@ public class GravitySystem : System!Gravity
     {
         if(globalGameState == GameState.pause) return;
         
-        auto data = ComponentPool!Movable.instance.getComponents(Simulation.currentWorld);
+        auto data = ComponentPool!Movable.instance.getComponents(*currentWorld);
 
         foreach(i, ref movable; data)
         {
-            Entity entity = ComponentPool!Movable.instance.dense2Entity(Simulation.currentWorld, i);
+            Entity entity = ComponentPool!Movable.instance.dense2Entity(*currentWorld, i);
 
             if(entity.hasComponent!Gravity())
             {
@@ -230,11 +230,11 @@ public class PowderSystem : System!Powder
     protected override void onUpdated()
     {
         fallDirection++;
-        auto data = ComponentPool!Powder.instance.getComponents(currentWorld);
+        auto data = ComponentPool!Powder.instance.getComponents(*currentWorld);
 
         foreach(i, ref powder; data)
         {
-            Entity entity = ComponentPool!Powder.instance.dense2Entity(currentWorld, i);
+            Entity entity = ComponentPool!Powder.instance.dense2Entity(*currentWorld, i);
             updateComponent(entity, powder);
         }
     }
