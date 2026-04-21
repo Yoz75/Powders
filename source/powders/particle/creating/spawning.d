@@ -32,6 +32,8 @@ public class CreateParticleSystem : BaseSystem
     private CategoryButton selectedCategoryButton;
     private SerializedParticleType selectedType;
 
+    private static SerializedParticleType airType;
+
     private IShape shape;
 
     public void selectShape(IShape shape)
@@ -42,6 +44,8 @@ public class CreateParticleSystem : BaseSystem
     public override void onCreated()
     {
         instance = this;
+        airType = getAirType();
+
         assert(globalLoadedCategories.length > 0, "CreateParticleSystem is being initialized, 
          but loadCategories() still wasn't called!");
 
@@ -107,6 +111,7 @@ public class CreateParticleSystem : BaseSystem
         else if(gameWindow.isMouseButtonDown(MouseButtons.right))
         {
             shape.deleteAtPos(pos.value);
+            shape.fillAtPosition(pos.value, airType);
         }
     }
 }

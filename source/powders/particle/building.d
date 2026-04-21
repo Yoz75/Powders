@@ -25,6 +25,11 @@ private T getCachedComponent(T)(const SerializedParticleType type)
     return type2Value[type].value;
 }
 
+public void buildAir(Entity entity)
+{
+    buildParticle(entity, globalTypesDictionary[airTypeId]);
+}
+
 /// Build entity as a some particle type
 /// Params:
 ///   entity = the entity
