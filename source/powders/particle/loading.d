@@ -9,6 +9,7 @@ import std.file;
 
 /// The id of the Air component
 public enum airTypeId = "__Air";
+public enum borderTypeId = "__Border";
 
 /// Loaded types, but as dictionary
 public SerializedParticleType[ParticleId] globalTypesDictionary;
@@ -160,5 +161,12 @@ public SerializedParticleType getAirType()
 {
     auto airType = airTypeId in globalTypesDictionary;
     assert(airType !is null, "At some reason getAirType() called before air component registered!");
+    return globalTypesDictionary[airTypeId];
+}
+
+public SerializedParticleType getBorderType()
+{
+    auto borderType = borderTypeId in globalTypesDictionary;
+    assert(borderType !is null, "At some reason getBorderType() called before border component registered!");
     return globalTypesDictionary[airTypeId];
 }
