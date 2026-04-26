@@ -20,6 +20,13 @@ public:
     ParticleId typeId;
 }
 
+
+/// Marker component that tells game that this particle isn't normal particle and not supposed to stay (e.g delta temperature)
+@Component(OnDestroyAction.destroy) public struct Hollow
+{
+    mixin MakeJsonizable;
+}
+
 public enum GravityDirection : VelocityScalar[2]
 {
     none = [0, 0],

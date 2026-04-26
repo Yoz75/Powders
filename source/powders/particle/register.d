@@ -41,7 +41,8 @@ public enum OnAddAction
     recreate
 }
 
-/// Attribute, that says that some struct is a component and can be serialized and deserialized as component
+/// Attribute, that says that some struct is a component and can be serialized and deserialized as component. 
+/// Components, that should not be serializable (e.g position component) must to avoid this attribute!
 public struct Component
 {
 public:

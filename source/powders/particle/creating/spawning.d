@@ -9,6 +9,7 @@ import powders.map;
 import powders.particle.register;
 import powders.particle.loading;
 import powders.particle.building;
+import powders.particle.basics : Hollow;
 import powders.ui;
 import powders.rendering;
 import powders.particle.creating.ui;
@@ -32,6 +33,8 @@ public class CreateParticleSystem : BaseSystem
     private CategoryButton selectedCategoryButton;
     private SerializedParticleType selectedType;
 
+    private static SerializedParticleType airType;
+
     private IShape shape;
 
     public void selectShape(IShape shape)
@@ -42,6 +45,8 @@ public class CreateParticleSystem : BaseSystem
     public override void onCreated()
     {
         instance = this;
+        airType = getAirType();
+
         assert(globalLoadedCategories.length > 0, "CreateParticleSystem is being initialized, 
          but loadCategories() still wasn't called!");
 
@@ -102,11 +107,20 @@ public class CreateParticleSystem : BaseSystem
         shape.markBorders(pos.value);
         if(gameWindow.isMouseButtonDown(MouseButtons.left))
         {
+            string* hasHollow = Hollow.stringof in selectedType.components;
+
+            // If new particle is not hollow (see HollowParticle) remove old one before building
+            if(hasHollow is null)
+            {
+                shape.deleteAtPos(pos.value);
+            }
+
             shape.fillAtPosition(pos.value, selectedType);
         }
         else if(gameWindow.isMouseButtonDown(MouseButtons.right))
         {
             shape.deleteAtPos(pos.value);
+            shape.fillAtPosition(pos.value, airType);
         }
     }
 }

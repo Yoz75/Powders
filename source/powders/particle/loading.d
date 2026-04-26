@@ -7,6 +7,10 @@ import powders.particle.basics;
 import powders.particle.register;
 import std.file;
 
+/// The id of the Air component
+public enum airTypeId = "__Air";
+public enum borderTypeId = "__Border";
+
 /// Loaded types, but as dictionary
 public SerializedParticleType[ParticleId] globalTypesDictionary;
 
@@ -151,4 +155,18 @@ pure string extractDirName(string path)
 {
     import std.array;
     return path.split(pathSeparator)[$-1];
+}
+
+public SerializedParticleType getAirType()
+{
+    auto airType = airTypeId in globalTypesDictionary;
+    assert(airType !is null, "At some reason getAirType() called before air component registered!");
+    return globalTypesDictionary[airTypeId];
+}
+
+public SerializedParticleType getBorderType()
+{
+    auto borderType = borderTypeId in globalTypesDictionary;
+    assert(borderType !is null, "At some reason getBorderType() called before border component registered!");
+    return globalTypesDictionary[airTypeId];
 }

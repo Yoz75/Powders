@@ -388,6 +388,19 @@ public struct Map
         }
     }
 
+    pragma(inline, true) public bool isInBounds(in int[2] position)
+    {
+        immutable int[2] mapResolution = this.resolution;
+
+        if(position[0] < 0) return false;
+        if(position[1] < 0) return false;
+
+        if(position[0] >= mapResolution[0]) return false;
+        if(position[1] >= mapResolution[1]) return false;
+
+        return true;
+    }
+
     /// Bound position to map coordinates
     /// Params:
     ///   position = the position, this parameter is ref and WILL BE bounded.

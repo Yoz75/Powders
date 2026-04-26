@@ -15,6 +15,8 @@ import powders.particle.temperature;
 /// System, that starts other systems in powders.particle module
 public class InitialParticlesSystem : BaseSystem
 {
+    import powders.particle.building;
+    
     public override void onCreated()
     {
         registerDefaultModules();
@@ -47,17 +49,17 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!WWorldSparkleSystem.create();
         immutable auto mapResolution = globalMap.resolution;
 
-        foreach (i; 0..mapResolution[0])
-        {
-            auto entity = globalMap.getAt([i, mapResolution[1] - 1]);
-            entity.addComponent!Particle(Particle.init);
-            entity.addComponent!Temperature(Temperature.init);
-            entity.getComponent!MapRenderable().color = white;
-        }
-
         foreach(entity; globalMap)
         {
-            entity.addComponent!Temperature(Temperature.init);
+            buildAir(entity);
+        }
+
+        foreach (x, y, entity; globalMap)
+        {
+            if((x == 0 || y == 0) || (x == mapResolution[0] - 1 || y == mapResolution[1] - 1))
+            {
+                buildBorder(entity);
+            }
         }
 
         (cast(MovableSystem) MovableSystem.instance).onMoved ~= (Entity self, Entity other)
