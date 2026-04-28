@@ -44,6 +44,7 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!DeltaTemperatureSystem.create();
         SystemFactory!MeltableSystem.create();
         SystemFactory!SolidableSystem.create();
+        SystemFactory!ConvectionSystem.create();
 
         SystemFactory!WWorldConductorSystem.create();
         SystemFactory!WWorldSparkleSystem.create();
@@ -58,6 +59,7 @@ public class InitialParticlesSystem : BaseSystem
         {
             if((x == 0 || y == 0) || (x == mapResolution[0] - 1 || y == mapResolution[1] - 1))
             {
+                destroyParticle(entity);
                 buildBorder(entity);
             }
         }

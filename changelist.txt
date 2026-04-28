@@ -62,3 +62,4 @@
 * Moved settings and particles to the project directory
 * Fixed powder system bug
 * Fixed garbage at the and of buttons
+* Fixed a bug when particle behaviored like another type when replacing
