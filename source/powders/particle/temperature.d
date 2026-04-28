@@ -87,6 +87,11 @@ public:
     @JsonizeField TemperatureScalar criticalTemperature;
 }
 
+public @Component(OnDestroyAction.destroy) struct Convection
+{
+    mixin MakeJsonizable;
+public:
+}
 
 import kernel.todo;
 mixin TODO!("Currently TemperatureSystem is broken when process ambient heat, fix later!");
@@ -281,6 +286,78 @@ public class SolidableSystem : MapEntitySystem!Solidable
             buildParticle(entity, serializedResult);
             entity.addComponent(temperature);
         }
+    }
+}
+
+public class ConvectionSystem : System!Convection
+{        
+    int[2] mapResolution;
+
+    private TemperatureSystem temperatureSystemInstance;
+
+    public override void onCreated()
+    {
+        mapResolution = globalMap.resolution();
+        temperatureSystemInstance = cast(TemperatureSystem) TemperatureSystem.instance;
+    }
+
+    immutable(int[2][GravityDirection]) gravity2convection = 
+    [
+        GravityDirection.down: [0, -1],
+        GravityDirection.up: [0, 1],
+        GravityDirection.left: [-1, 0],
+        GravityDirection.right: [1, 0],
+        GravityDirection.none: [0, 0]
+    ];
+
+    protected override void onUpdated()
+    {
+        import powders.timecontrol;
+        static ubyte rawMoveOffset;
+
+        if(globalGameState != GameState.play) return;
+        if(Gravity.direction == GravityDirection.none) return;
+
+        Convection[] convections = ComponentPool!Convection.instance.getComponents(*currentWorld);
+
+        foreach(i, convection; convections)
+        {
+            immutable Entity entity = ComponentPool!Convection.instance.dense2Entity(*currentWorld, i);
+            immutable Position position = entity.getComponent!Position();
+
+            immutable int[2] gravityDirection = gravity2convection[Gravity.direction];
+
+            // `-1` part converts ofsset from [0..2] to [-1.1]
+            immutable int moveOffset = (rawMoveOffset % 3) - 1;
+            immutable int[2] gravityPerpendicular = [gravityDirection[1], -gravityDirection[0]];
+            immutable int[2] upperPos = position.xy[] + gravityDirection[] + gravityPerpendicular[] * moveOffset;
+            
+            if(!globalMap.isInBounds(upperPos)) continue;
+            immutable Entity upper = globalMap.getAt(upperPos);
+            if(!upper.hasComponent!Convection()) continue;
+
+            immutable areSameType = entity.getComponent!Particle().typeId == upper.getComponent!Particle().typeId;
+
+            immutable Temperature selfTemperature = entity.getComponent!Temperature;
+            immutable Temperature upperTemperature = upper.getComponent!Temperature;
+            
+            immutable bool isThermalConvectionSuitable = 
+                selfTemperature.value > upperTemperature.value && areSameType;
+
+            if(isThermalConvectionSuitable)
+            {
+                globalMap.swap(entity, upper);
+            }
+            else continue;
+
+            temperatureSystemInstance.updateTemperatureOf(entity);
+            temperatureSystemInstance.updateTemperatureOf(upper);
+
+            entity.addComponent!UpdateRenderableMarker();
+            upper.addComponent!UpdateRenderableMarker();
+        }
+
+        rawMoveOffset++;
     }
 }
 

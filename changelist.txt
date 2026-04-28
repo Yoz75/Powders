@@ -63,3 +63,5 @@
 * Fixed powder system bug
 * Fixed garbage at the and of buttons
 * Fixed a bug when particle behaviored like another type when replacing
+* Made air a real particle
+* added convection
