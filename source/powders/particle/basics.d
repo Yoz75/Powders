@@ -165,11 +165,12 @@ public class MovableSystem : MapEntitySystem!Movable
 
         for (int i = 1; i <= steps; i++)
         {
+            import powders.particle.loading : airTypeId;
             int x = cast(int) (start[0] + stepX * i);
             int y = cast(int) (start[1] + stepY * i);
             int[2] checkPos = [x, y];
 
-            if (globalMap.getAt(checkPos).hasComponent!Particle())
+            if (globalMap.getAt(checkPos).getComponent!Particle().typeId != airTypeId)
                 break;
 
             lastFree = checkPos;

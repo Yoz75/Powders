@@ -97,12 +97,9 @@ public void buildParticle(Entity entity, in SerializedParticleType type)
     entity.addComponent!UpdateRenderableMarker();
 }
 
+/// Destroy all components of `entity`.
 public void destroyParticle(Entity entity)
 {
-    immutable bool hasParticle = entity.hasComponent!Particle();
-
-    if(!hasParticle) return;
-
     mixin TODO!("Try to make this think not by removing all components, but something else (like associative array)");
     static foreach (module_; defaultModules)
     {
