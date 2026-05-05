@@ -25,11 +25,11 @@ public abstract class ParticleInfoProvider : IInfoProvider
             return "";
         } 
 
-        const Entity particleUnderMouse = globalMap.getAt(mousePosition);
+        Entity particleUnderMouse = globalMap.getAt(mousePosition);
         return getInfo(particleUnderMouse);        
     }
 
-    protected abstract string getInfo(const Entity entityUnderMouth);
+    protected abstract string getInfo(Entity entityUnderMouth);
 }
 
 /// System, that displays various information. E.g about particle or simulation state

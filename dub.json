@@ -44,7 +44,8 @@
 	},
 	"description": "a powders toy",
 	"dflags": [
-		"-J ./compiletimeResources/"
+		"-J ./compiletimeResources/",
+		"-g"
 	],
 	"lflags-linux": [
 		"-rpath=$$ORIGIN"

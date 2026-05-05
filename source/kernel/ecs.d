@@ -12,59 +12,52 @@ alias onRemoveAction = void delegate(Entity entity);
 alias onAddAction = void delegate(Entity entity);
 
 /// Component pool for entities in the simulation
-public struct ComponentPool(T)
+public class ComponentPool(T)
 {
-    public static ComponentPool!T instance;
-
     // dense storage per world
-    private T[][] dense;
-    private Id[][] entities;        // dense index -> entity id
-    private Id[][] sparse;          // entity id -> dense index
+    private T[] dense;
+    private Id[] entities;        // dense index -> entity id
+    private Id[] sparse;          // entity id -> dense index
 
     private onAddAction[] onAddDelegates;
     private onRemoveAction[] onRemoveDelegates;
 
     public Entity dense2Entity(World world, size_t denseId)
     {
-        return Entity(world, entities[world.id][denseId]);
+        return Entity(world, entities[denseId]);
     }
 
     /// Reserve space for components in the world
     /// Params:
     ///   world = the world
     ///   componentsCount = count of reserved components 
-    public void reserve(World world, size_t componentsCount)
+    public void reserve(size_t componentsCount)
     {
-        ensureWorld(world);
-
-        dense[world.id].reserve(componentsCount);
-        entities[world.id].reserve(componentsCount);
+        dense.reserve(componentsCount);
+        entities.reserve(componentsCount);
     }
 
     /// Add component to entity
     /// Params:
     ///   entity = the entity
     ///   value = the value of added component
-    public void addComponent(Entity entity, T value)
+    public void addComponent(Entity entity, T value = T.init)
     {
-        ensureWorld(entity.world);
-
-        auto wid = entity.world.id;
         auto eid = entity.id;
 
-        ensureSparse(wid, eid);
+        ensureSparse(eid);
 
         if (hasComponent(entity))
         {
-            dense[wid][sparse[wid][eid]] = value;
+            dense[sparse[eid]] = value;
             return;
         }
 
-        auto index = dense[wid].length;
+        auto index = dense.length;
 
-        dense[wid] ~= value;
-        entities[wid] ~= eid;
-        sparse[wid][eid] = index;
+        dense ~= value;
+        entities ~= eid;
+        sparse[eid] = index;
 
         foreach (onAddDelegate; onAddDelegates)
         {
@@ -78,23 +71,22 @@ public struct ComponentPool(T)
         if (!hasComponent(entity))
             return;
 
-        auto wid = entity.world.id;
         auto eid = entity.id;
 
-        auto index = sparse[wid][eid];
-        auto lastIndex = dense[wid].length - 1;
-        auto lastEntity = entities[wid][lastIndex];
+        auto index = sparse[eid];
+        auto lastIndex = dense.length - 1;
+        auto lastEntity = entities[lastIndex];
 
         // swap-remove
-        dense[wid][index] = dense[wid][lastIndex];
-        entities[wid][index] = lastEntity;
-        sparse[wid][lastEntity] = index;
+        dense[index] = dense[lastIndex];
+        entities[index] = lastEntity;
+        sparse[lastEntity] = index;
 
-        dense[wid].length--;
-        entities[wid].length--;
+        dense.length--;
+        entities.length--;
 
         // mark as removed
-        sparse[wid][eid] = Id.max;
+        sparse[eid] = Id.max;
 
         foreach (onRemove; onRemoveDelegates)
         {
@@ -112,11 +104,9 @@ public struct ComponentPool(T)
         onAddDelegates ~= action;
     }
 
-    public T[] getComponents(World world)
+    public T[] getComponents()
     {
-        ensureWorld(world);
-
-        return dense[world.id];
+        return dense;
     }
 
     /// Get component for entity
@@ -126,58 +116,42 @@ public struct ComponentPool(T)
     // when error is true
     public ref T getComponent(Entity entity)
     {
-        ensureWorld(entity.world);
-        auto wid = entity.world.id;
         auto eid = entity.id;
 
-        auto idx = sparse[wid][eid];
+        auto idx = sparse[eid];
 
         if(idx == Id.max)
         {
             throw new Exception("Component does not exists!");
         }
 
-        return dense[wid][idx];
+        return dense[idx];
     }
 
     public bool hasComponent(Entity entity)
     {
-        auto wid = entity.world.id;
         auto eid = entity.id;
 
-        if (wid >= sparse.length) return false;
-        if (eid >= sparse[wid].length) return false;
+        if (eid >= sparse.length) return false;
 
-        auto idx = sparse[wid][eid];
+        auto idx = sparse[eid];
 
         if (idx == Id.max) return false;
 
-        return idx < entities[wid].length &&
-            entities[wid][idx] == eid;
+        return idx < entities.length &&
+            entities[idx] == eid;
     }
 
-    private void ensureWorld(World world)
+    private void ensureSparse(Id eid)
     {
-        auto wid = world.id;
-
-        if (wid >= dense.length)
+        if (eid >= sparse.length)
         {
-            dense.length = wid + 1;
-            entities.length = wid + 1;
-            sparse.length = wid + 1;
-        }
-    }
+            auto oldLen = sparse.length;
+            sparse.length = eid + 1;
 
-    private void ensureSparse(Id wid, Id eid)
-    {
-        if (eid >= sparse[wid].length)
-        {
-            auto oldLen = sparse[wid].length;
-            sparse[wid].length = eid + 1;
-
-            foreach (i; oldLen .. sparse[wid].length)
+            foreach (i; oldLen .. sparse.length)
             {
-                sparse[wid][i] = Id.max;
+                sparse [i] = Id.max;
             }
         }
     }
@@ -198,56 +172,6 @@ public struct Entity
     }
 
     public @property Id id() => id_;
-
-pragma(inline, true):
-
-    /// Shortcut for ComponentPool!T.instance.addComponent. See ComponentPool.addComponent
-    public void addComponent(T)(T value = T.init) inout
-    {
-        ComponentPool!T.instance.addComponent(this, value);
-    }    
-
-    /// Add a bundle of components. This method adds all fields of T as separated components with default init value
-    public void addBundle(T)() inout
-    {
-        import std.traits: Fields;
-
-        static foreach(TField; Fields!T)
-        {
-            addComponent!TField(TField.init);
-        }
-    }
-
-    /// Remove a bundle of components. This method removes all fields of T as separated components
-    public void removeBundle(T)() inout
-    {
-        import std.traits: Fields;
-
-        static foreach(TField; Fields!T)
-        {
-            removeComponent!TField();
-        }
-    }
-
-    /// Shortcut for ComponentPool!T.instance.getComponent. See ComponentPool.getComponent
-    public ref T getComponent(T)() inout
-    {
-        return ComponentPool!T.instance.getComponent(this);
-    }
-
-    /// Shortcut for ComponentPool!T.instance.hasComponent. See ComponentPool.hasComponent
-    public bool hasComponent(T)() inout
-    {
-        return ComponentPool!T.instance.hasComponent(this);
-    }
-
-    /// Shortcut for ComponentPool!T.instance.removeComponent. See ComponentPool.removeComponent
-    public void removeComponent(T)() inout
-    {
-        return ComponentPool!T.instance.removeComponent(this);
-    }
-
-pragma(inline):
 }
 
 /// Factory class for all systems. Create new systems using this factory
@@ -258,7 +182,7 @@ public final abstract class SystemFactory(T)
         import kernel.simulation : Simulation;
         
         auto system = new T();
-        system.currentWorld = &Simulation.currentWorld;
+        system.currentWorld = Simulation.currentWorld;
         systems ~= system;
 
         system.onCreated();
@@ -270,7 +194,7 @@ public final abstract class SystemFactory(T)
 /// Base class for systems. Needed only beause System(T) is tenplate class
 public abstract class BaseSystem
 {
-    protected World* currentWorld;
+    protected World currentWorld;
 
     /// Update system for each component
     public final void update()
@@ -328,9 +252,12 @@ public abstract class System(T) : BaseSystem
 
     public this()
     {
+        import kernel.simulation;
         instance = this;
-        ComponentPool!T.instance.addOnRemoveAction(&onRemove);
-        ComponentPool!T.instance.addOnAddAction(&onAdd);
+        auto world = Simulation.currentWorld;
+        auto pool = world.getPoolOf!T();
+        pool.addOnRemoveAction(&onRemove);
+        pool.addOnAddAction(&onAdd);
     }
 
     /// Calls when T component was added to entity
@@ -350,19 +277,41 @@ public abstract class System(T) : BaseSystem
     }
 }
 
-public struct World
+public class World
 {
+    private this(Id id)
+    {
+        id_ = id;
+    }
+
     public static World create()
     {
         static Id lastId;
 
-        return World(lastId++);
+        return new World(lastId++);
     }
 
     // private, but everything is public within a single module
     private size_t totalEntities_;
     private Id id_;
 
-    public @property size_t totalEntities() => totalEntities_;
-    public @property Id id() => id_;
+    private Object[string] name2pool;
+
+    public @property size_t totalEntities() nothrow pure inout => totalEntities_;
+    public @property Id id() nothrow pure inout => id_;
+
+    public ComponentPool!T getPoolOf(T)() nothrow pure
+    {
+        enum name = ComponentPool!T.stringof;
+        auto pool = name in name2pool;
+
+        if(pool is null)
+        {
+            auto newPool = new ComponentPool!T;
+            name2pool[name] = newPool;
+            return newPool;
+        }
+
+        return cast(ComponentPool!T) *pool;
+    }
 }

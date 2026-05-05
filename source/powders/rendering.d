@@ -232,6 +232,7 @@ private final class MapRenderSystem : BaseSystem
     static MapRenderSystem instance;
     private Sprite mapSprite;
     private IBasicShader mapShader;
+    private ComponentPool!MapRenderable renderables;
 
     public this()
     {
@@ -242,12 +243,13 @@ private final class MapRenderSystem : BaseSystem
     {
         import powders.particle.basics;
         mapSprite = Sprite.create(globalMap.resolution, kc.white);
+        renderables = currentWorld.getPoolOf!MapRenderable;
 
         foreach (ref Entity entity; globalMap)
         {
             MapRenderable renderable;
             renderable.color = kc.black;
-            entity.addComponent!MapRenderable(renderable);
+            renderables.addComponent(entity);
         }
     }
 
@@ -259,29 +261,34 @@ private final class MapRenderSystem : BaseSystem
 }
 
 /// Function type, that convert entity to color. E.g convert entity's temperature to color and etc
-alias renderModeConverter = kc.Color function(Entity entity);
+alias renderModeConverter = kc.Color delegate(Entity entity);
 
 public final class RenderableSystem : System!UpdateRenderableMarker
 {
     private renderModeConverter currentRenderModeConverter;
+    private ComponentPool!UpdateRenderableMarker markers;
+    private ComponentPool!Position positions;
 
     public override void onCreated()
     {
+        markers = currentWorld.getPoolOf!UpdateRenderableMarker;
+        positions = currentWorld.getPoolOf!Position;
         updateAll();
     }
+
     protected override void onUpdated()
     {
         import kernel.simulation;
         World world = Simulation.currentWorld;
-        auto data = ComponentPool!UpdateRenderableMarker.instance.getComponents(world);
+        auto data = markers.getComponents();
         Entity[] updatedEntities = new Entity[data.length];
 
         foreach(i, marker; data)
         {
-            immutable Entity entity = ComponentPool!UpdateRenderableMarker.instance.dense2Entity(world, i);
+            Entity entity = markers.dense2Entity(world, i);
             updatedEntities[i] = entity;
 
-            immutable auto position = entity.getComponent!Position();
+            immutable auto position = positions.getComponent(entity);
 
             kc.Color color = currentRenderModeConverter(entity);        
             MapRenderSystem.instance.mapSprite.setPixel(position.xy, color);
@@ -289,7 +296,7 @@ public final class RenderableSystem : System!UpdateRenderableMarker
         
         foreach(entity; updatedEntities)
         {
-            entity.removeComponent!UpdateRenderableMarker();
+            markers.removeComponent(entity);
         }
     }
 
@@ -297,7 +304,7 @@ public final class RenderableSystem : System!UpdateRenderableMarker
     {
         foreach (x, y, entity; globalMap)
         {
-            entity.addComponent!UpdateRenderableMarker();
+            markers.addComponent(entity);
         }
     }
 }
@@ -323,6 +330,7 @@ public class RenderModeSystem : BaseSystem
     }
 
     public static RenderModeSystem instance;
+    private ComponentPool!MapRenderable renderables;
     import powders.input;
 
     private RenderMode[] renderModes;
@@ -346,6 +354,7 @@ public class RenderModeSystem : BaseSystem
     public override void onCreated()
     {
         renderableSystemInstance = cast(RenderableSystem) RenderableSystem.instance;
+        renderables = currentWorld.getPoolOf!MapRenderable;
 
         addRenderMode(&color2color, Keys.one);
         renderableSystemInstance.currentRenderModeConverter = &color2color;
@@ -363,9 +372,9 @@ public class RenderModeSystem : BaseSystem
         }
     }
 
-    private static Color color2color(Entity entity)
+    private Color color2color(Entity entity)
     {
-        MapRenderable renderable = entity.getComponent!MapRenderable();
+        MapRenderable renderable = renderables.getComponent(entity);
         return renderable.color;
     }
 }

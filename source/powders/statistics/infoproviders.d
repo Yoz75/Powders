@@ -7,30 +7,44 @@ public class TemperatureInfoProvider : ParticleInfoProvider
 {
     import powders.particle.temperature;
 
-    protected override string getInfo(const Entity entity)
+    private ComponentPool!Temperature temperatures;
+
+    public this(World world)
+    {
+        temperatures = world.getPoolOf!Temperature;
+    }
+
+    protected override string getInfo(Entity entity)
     {
         import std.conv : to;
 
-        immutable Temperature temperature = entity.getComponent!Temperature();
+        immutable Temperature temperature = temperatures.getComponent(entity);  
         return "Temperature: " ~ temperature.value.to!string ~ "*C";
     }
 }
 
 public class TypeNameProvider : ParticleInfoProvider
 {
-    import powders.particle.temperature;
+    import powders.particle.basics : Particle;
 
-    protected override string getInfo(const Entity entity)
+    
+    private ComponentPool!Particle particles;
+
+    public this(World world)
     {
-        import powders.particle.basics : Particle;
+        particles = world.getPoolOf!Particle;
+    }
+
+    protected override string getInfo(Entity entity)
+    {
         import std.conv : to;
 
-        if(!entity.hasComponent!Particle())
+        if(!particles.hasComponent(entity))
         {
             return "Nothing";
         }
 
-        immutable Particle particle = entity.getComponent!Particle();
+        immutable Particle particle = particles.getComponent(entity);
         return particle.typeId.dup;
     }
 }

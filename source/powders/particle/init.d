@@ -16,6 +16,7 @@ import powders.particle.temperature;
 public class InitialParticlesSystem : BaseSystem
 {
     import powders.particle.building;
+    import kernel.simulation;
     
     public override void onCreated()
     {
@@ -29,6 +30,7 @@ public class InitialParticlesSystem : BaseSystem
 
         assert(globalMap != Map.init, "Initial particle system is being initialized, but map is still wasn't inited!");
 
+
         SystemFactory!MovableSystem.create();
         SystemFactory!GravitySystem.create();
         SystemFactory!PowderSystem.create();
@@ -40,12 +42,14 @@ public class InitialParticlesSystem : BaseSystem
         SystemFactory!CreateParticleSystem.create();
         SystemFactory!ShapeChangerSystem.create();
 
+        temperature2ColorConverter = new Temperature2ColorConverter(Simulation.currentWorld);
         SystemFactory!TemperatureSystem.create();
         SystemFactory!DeltaTemperatureSystem.create();
         SystemFactory!MeltableSystem.create();
         SystemFactory!SolidableSystem.create();
         SystemFactory!ConvectionSystem.create();
 
+        ww2ColorConverter = new WWConductor2ColorConverter(Simulation.currentWorld);
         SystemFactory!WWorldConductorSystem.create();
         SystemFactory!WWorldSparkleSystem.create();
         immutable auto mapResolution = globalMap.resolution;

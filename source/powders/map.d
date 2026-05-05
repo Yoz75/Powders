@@ -85,6 +85,9 @@ public abstract class MapEntitySystem(T) : System!T
     /// Call after update or not? Enable this only if you REALLY need it.
     protected bool useAfterUpdate = false;
 
+    private ComponentPool!T pool;
+    private ComponentPool!Position positionsPool;
+
     public this()
     {
         super();
@@ -95,6 +98,8 @@ public abstract class MapEntitySystem(T) : System!T
         initChunks(tempChunks, globalMap.tempMap);
 
         globalMap.onFinalizeTick ~= &swapChunks;
+        pool = Simulation.currentWorld.getPoolOf!T;
+        positionsPool = Simulation.currentWorld.getPoolOf!Position;
     }
 
     public override void onUpdated()
@@ -120,9 +125,9 @@ public abstract class MapEntitySystem(T) : System!T
                     {
                         foreach(x, entity; chunkRow)
                         {
-                            if(!entity.hasComponent!T()) continue;
+                            if(!pool.hasComponent(entity)) continue;
 
-                            ref T component = entity.getComponent!T();
+                            ref T component = pool.getComponent(entity);
                             beforeUpdateComponent(entity, chunk, component);
                         }
                     }
@@ -134,9 +139,9 @@ public abstract class MapEntitySystem(T) : System!T
                     {
                         foreach(x, entity; chunkRow)
                         {
-                            if(!entity.hasComponent!T()) continue;
+                            if(!pool.hasComponent(entity)) continue;
 
-                            ref T component = entity.getComponent!T();
+                            ref T component = pool.getComponent(entity);
                             updateComponent(entity, chunk, component);
                         }
                     }
@@ -148,9 +153,9 @@ public abstract class MapEntitySystem(T) : System!T
                     {
                         foreach(x, entity; chunkRow)
                         {
-                            if(!entity.hasComponent!T()) continue;
+                            if(!pool.hasComponent(entity)) continue;
 
-                            ref T component = entity.getComponent!T();
+                            ref T component = pool.getComponent(entity);
                             afterUpdateComponent(entity, chunk, component);
                         }
                     }
@@ -164,7 +169,7 @@ public abstract class MapEntitySystem(T) : System!T
     ///   entity = the entity, made chunk dirty
     public void markDirty(Entity entity)
     {
-        immutable int[2] position = entity.getComponent!Position().xy;
+        immutable int[2] position = positionsPool.getComponent(entity).xy;
         immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
 
         chunks[chunkIndex[1]][chunkIndex[0]].makeDirty();
@@ -175,7 +180,7 @@ public abstract class MapEntitySystem(T) : System!T
     ///   entity = the entity, made chunk clean
     public void markClean(Entity entity)
     {
-        immutable int[2] position = entity.getComponent!Position().xy;
+        immutable int[2] position = positionsPool.getComponent(entity).xy;
         immutable int[2] chunkIndex = Chunk.world2ChunkIndex(position);
         chunks[chunkIndex[1]][chunkIndex[0]].makeClean();
     }
@@ -244,6 +249,8 @@ public struct Map
     private Entity[][] map;
     private Entity[][] tempMap; 
 
+    private ComponentPool!Position positionsPool;
+
     /// The resolution of map, [x, y]
     public @property int[2] resolution() pure const
     {
@@ -257,6 +264,7 @@ public struct Map
     ///   mapSize = map size. [0] is x and [1] is y
     public this(int[2] mapSize)
     {
+        positionsPool = Simulation.currentWorld.getPoolOf!Position;
         if(mapSize[0] % chunkSize != 0 || mapSize[1] % chunkSize != 0)
         {
             throw new Exception("Map must be made of chunks with size " ~ chunkSize);
@@ -270,7 +278,7 @@ public struct Map
             foreach(x, ref entity; row)
             {
                 entity = Entity.create(Simulation.currentWorld);
-                entity.addComponent!Position(Position([cast(int) x, cast(int) y]));
+                positionsPool.addComponent(entity, Position([cast(int) x, cast(int) y]));
             }
         }
 
@@ -318,9 +326,12 @@ public struct Map
 
     /// Get entity at position (position is automatically bounded to map size)
     /// Returns: entity at position
-    pragma(inline, true) public Entity getAt(int[2] position)
+    pragma(inline, true) public Entity getAt(bool shouldBoundPos = true)(int[2] position)
     {
-        boundPosition(position);
+        static if(shouldBoundPos)
+        {
+            boundPosition(position);
+        }
         return map[position[1]][position[0]];
     }
 
@@ -356,8 +367,8 @@ public struct Map
     /// Swap two entities on the map and update their Position components
     public void swap(Entity first, Entity second)
     {
-        ref Position firstPos = first.getComponent!Position();
-        ref Position secondPos = second.getComponent!Position();
+        ref Position firstPos = positionsPool.getComponent(first);
+        ref Position secondPos = positionsPool.getComponent(second);
         Position temp = firstPos;     
 
         tempMap[firstPos.xy[1]][firstPos.xy[0]] = second;

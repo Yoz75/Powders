@@ -53,18 +53,22 @@ public void buildParticle(Entity entity, in SerializedParticleType type)
     {
         LSwitch: switch(key)
         {
+            mixin TODO!"build particle is already slow because of GC. 
+                \"getPoolOf\" line makes the function EVEN SLOWER. Optimize in future please";
             static foreach (module_; defaultModules)
             {
                 static foreach (Component; getComponentsInModule!(module_))
                 {
                     case Component.stringof:
+                    {            
+                        auto pool = entity.world.getPoolOf!Component;            
                         pragma(msg, "MSG: registered a new component " ~ Component.stringof);
                         
                         static if(is(Component == Particle))
                         {
                             Component particle;
                             particle.typeId = type.typeID;
-                            entity.addComponent!Component(particle);
+                            pool.addComponent(entity);
                             break LSwitch;
                         }
 
@@ -75,9 +79,9 @@ public void buildParticle(Entity entity, in SerializedParticleType type)
                         // So we can do nothing when onAddAction is ignore, but if it's recreate, we should remove component and add it again with new value
                         static if(onAddAction == OnAddAction.recreate)
                         {
-                            if(entity.hasComponent!Component())
+                            if(pool.hasComponent(entity))
                             {
-                                entity.removeComponent!Component();
+                                pool.removeComponent(entity);
                             }
                         }
 
@@ -85,8 +89,9 @@ public void buildParticle(Entity entity, in SerializedParticleType type)
                         // Find raw json data in AA of type by getting `Component` (attribute) of `Component` 
                         // (type, that contains this attribute) and parse it
                         Component component = getCachedComponent!Component(type);
-                        entity.addComponent!Component(component);
+                        pool.addComponent(entity, component);
                     break LSwitch;
+                    }
                 }
             }
             default:
@@ -94,13 +99,15 @@ public void buildParticle(Entity entity, in SerializedParticleType type)
         }
     }
 
-    entity.addComponent!UpdateRenderableMarker();
+    entity.world.getPoolOf!UpdateRenderableMarker().addComponent(entity);
 }
 
 /// Destroy all components of `entity`.
 public void destroyParticle(Entity entity)
 {
     mixin TODO!("Try to make this think not by removing all components, but something else (like associative array)");
+    mixin TODO!"build particle is already slow because of GC. 
+        \"getPoolOf\" line makes the function EVEN SLOWER. Optimize in future please";
     static foreach (module_; defaultModules)
     {
         static foreach (Component; getComponentsInModule!(module_))
@@ -109,13 +116,15 @@ public void destroyParticle(Entity entity)
                 enum componentAttribute = getComponentAttributeOf!(Component);
                 enum onDestroyAction = componentAttribute.onDestroyAction;
 
+                auto pool =  entity.world.getPoolOf!Component;
+
                 static if(onDestroyAction == OnDestroyAction.destroy)
                 {
-                    entity.removeComponent!Component();
+                    pool.removeComponent(entity);
                 }
                 else static if(onDestroyAction == OnDestroyAction.setInit)
                 {
-                    entity.addComponent!Component(Component.init);
+                    pool.addComponent(entity, Component.init);
                 }
                 else static if(onDestroyAction == OnDestroyAction.keep)
                 {
@@ -124,6 +133,6 @@ public void destroyParticle(Entity entity)
             }
         }
     }
-
-    entity.addComponent!UpdateRenderableMarker();
+    
+    entity.world.getPoolOf!UpdateRenderableMarker().addComponent(entity);
 }

@@ -1,6 +1,7 @@
 module powders.statistics;
 
 import kernel.ecs;
+import kernel.simulation;
 public import powders.statistics.displayinfo;
 public import powders.statistics.infoproviders;
 
@@ -8,9 +9,11 @@ public class InitialStatisticsSystem : BaseSystem
 {
     public override void onCreated()
     {
+        auto world = Simulation.currentWorld;
+
         SystemFactory!DisplayInfoSystem.create();
-        DisplayInfoSystem.instance.addInfoCollector(new TemperatureInfoProvider());
-        DisplayInfoSystem.instance.addInfoCollector(new TypeNameProvider());
+        DisplayInfoSystem.instance.addInfoCollector(new TemperatureInfoProvider(world));
+        DisplayInfoSystem.instance.addInfoCollector(new TypeNameProvider(world));
         SystemFactory!FPSInfoSystem.create();
     }
 }

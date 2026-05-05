@@ -9,6 +9,8 @@ import powders.io;
 import powders.timecontrol;
 import std.parallelism;
 
+package WWConductor2ColorConverter ww2ColorConverter;
+
 /// State of wireworld conductor particle
 public enum ConductorState
 {
@@ -42,28 +44,35 @@ public class WWorldConductorSystem : System!WWorldConductor
 {
     /// Action, that calls when particle became charged or uncharged
     public void delegate(Entity entity)[] onUpdatedSparkle;
+
+    private ComponentPool!WWorldConductor conductors;
+    private ComponentPool!UpdateRenderableMarker markers;
+    private ComponentPool!Position positions;
     
     public override void onCreated()
     {
-        ComponentPool!WWorldConductor.instance.reserve(Simulation.currentWorld, globalMap.resolution[0] * globalMap.resolution[1]);
+        conductors = currentWorld.getPoolOf!WWorldConductor;
+        markers = currentWorld.getPoolOf!UpdateRenderableMarker;
+        positions = currentWorld.getPoolOf!Position;
+
         onUpdatedSparkle ~= (Entity self) 
         {
-            self.addComponent!UpdateRenderableMarker();
+            markers.addComponent(self);
         };
 
         assert(RenderModeSystem.instance !is null, "Render mode system is not initialized but we add render mode!!!");
-        RenderModeSystem.instance.addRenderMode(&wwConductor2Color, Keys.three);
+        RenderModeSystem.instance.addRenderMode(&ww2ColorConverter.wwConductor2Color, Keys.three);
     }
 
     protected override void onAfterUpdate()
     {
         if(globalGameState != GameState.play) return;
 
-        auto data = ComponentPool!WWorldConductor.instance.getComponents(Simulation.currentWorld);
+        auto data = conductors.getComponents();
         foreach(i, ref conductor; data)
         {
-            Entity entity = ComponentPool!WWorldConductor.instance.dense2Entity(Simulation.currentWorld, i);
-            if(!entity.hasComponent!WWorldConductor) continue;  
+            Entity entity = conductors.dense2Entity(Simulation.currentWorld, i);
+            if(!conductors.hasComponent(entity)) continue;  
 
             conductor.state = conductor.nextState;
         }
@@ -73,25 +82,25 @@ public class WWorldConductorSystem : System!WWorldConductor
     {
         if(globalGameState != GameState.play) return;
 
-        auto data = ComponentPool!WWorldConductor.instance.getComponents(Simulation.currentWorld);
+        auto data = conductors.getComponents();
         foreach(i, ref conductor; data)
         {
-            Entity entity = ComponentPool!WWorldConductor.instance.dense2Entity(Simulation.currentWorld, i);
-            if(!entity.hasComponent!WWorldConductor) continue;
+            Entity entity = conductors.dense2Entity(Simulation.currentWorld, i);
+            if(!conductors.hasComponent(entity)) continue;
 
             conductor.state = conductor.nextState;
             if(conductor.state == ConductorState.nothing)
             {
-                auto neighbors = globalMap.getNeighborsAt(entity.getComponent!Position.xy);
+                auto neighbors = globalMap.getNeighborsAt(positions.getComponent(entity).xy);
 
                 ubyte headsCount;
                 foreach(row; neighbors)
                 {
                     foreach(neighbor; row)
                     {
-                        if(!neighbor.hasComponent!WWorldConductor) continue;
+                        if(!conductors.hasComponent(neighbor)) continue;
 
-                        ref WWorldConductor neighborConductor = neighbor.getComponent!WWorldConductor();
+                        ref WWorldConductor neighborConductor = conductors.getComponent(neighbor);
 
                         if(neighborConductor.state == ConductorState.head)
                         {
@@ -126,36 +135,57 @@ public class WWorldSparkleSystem : MapEntitySystem!WWorldSparkle
 {
     import powders.particle.basics : Particle;
 
+    private ComponentPool!WWorldConductor conductors;
+    private ComponentPool!WWorldSparkle sparkles;
+
+    public override void onCreated()
+    {
+        conductors = currentWorld.getPoolOf!WWorldConductor;
+        sparkles = currentWorld.getPoolOf!WWorldSparkle;
+    } 
+
     protected override void onAdd(Entity entity)
     {
         isPausable = false;
-        if(!entity.hasComponent!WWorldConductor) return;
+        if(!conductors.hasComponent(entity)) return;
 
-        entity.getComponent!WWorldConductor().state = ConductorState.head;
-        entity.getComponent!WWorldConductor().nextState = ConductorState.head;
+        conductors.getComponent(entity).state = ConductorState.head;
+        conductors.getComponent(entity).nextState = ConductorState.head;
 
-        entity.removeComponent!WWorldSparkle();
+        sparkles.removeComponent(entity);
     }
 }
 
-public Color wwConductor2Color(Entity entity)
+package final class  WWConductor2ColorConverter
 {
-    import davincilib.color;
+    private ComponentPool!WWorldConductor conductors;
+    private ComponentPool!MapRenderable renderables;
 
-    if(!entity.hasComponent!WWorldConductor) return entity.getComponent!MapRenderable().color;
-    immutable auto conductor = entity.getComponent!WWorldConductor();
-
-    final switch(conductor.state)
+    public this(World world)
     {
-        case ConductorState.head:
-            return blue;
-
-        case ConductorState.tail:
-            return red;
-
-        case ConductorState.nothing:
-            return entity.getComponent!MapRenderable().color;
+        conductors = world.getPoolOf!WWorldConductor;
+        renderables = world.getPoolOf!MapRenderable;
     }
 
-    return black; // should never happen
+    public Color wwConductor2Color(Entity entity)
+    {
+        import davincilib.color;
+
+        if(!conductors.hasComponent(entity)) return renderables.getComponent(entity).color;
+        immutable auto conductor = conductors.getComponent(entity);
+
+        final switch(conductor.state)
+        {
+            case ConductorState.head:
+                return blue;
+
+            case ConductorState.tail:
+                return red;
+
+            case ConductorState.nothing:
+                return renderables.getComponent(entity).color;
+        }
+
+        return black; // should never happen
+    }
 }
