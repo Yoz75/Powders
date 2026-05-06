@@ -396,7 +396,7 @@ public class ConvectionSystem : System!Convection
             immutable int[2] upperPos = position.xy[] + gravityDirection[] + gravityPerpendicular[] * moveOffset;
             
             if(!globalMap.isInBounds(upperPos)) continue;
-            Entity upper = globalMap.getAt(upperPos);
+            Entity upper = globalMap.getAt!false(upperPos);
             if(!convectionsPool.hasComponent(upper)) continue;
 
             immutable areSameType =
