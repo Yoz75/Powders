@@ -248,22 +248,20 @@ public struct Map
 
     private Entity[][] map;
     private Entity[][] tempMap; 
+    private int[2] resolution_;
 
     private ComponentPool!Position positionsPool;
 
     /// The resolution of map, [x, y]
-    public @property int[2] resolution() pure const
-    {
-        int[2] resolution;
-        resolution = [cast(int) map[0].length, cast(int) map.length];
-        return resolution;
-    }
+    pragma(inline, true)
+    public @property int[2] resolution() pure const nothrow @nogc => resolution_;
 
     /// Create new map instancee
     /// Params:
     ///   mapSize = map size. [0] is x and [1] is y
     public this(int[2] mapSize)
     {
+        resolution_ = mapSize;
         positionsPool = Simulation.currentWorld.getPoolOf!Position;
         if(mapSize[0] % chunkSize != 0 || mapSize[1] % chunkSize != 0)
         {
@@ -399,29 +397,25 @@ public struct Map
         }
     }
 
-    pragma(inline, true) public bool isInBounds(in int[2] position)
+    pragma(inline, true)
+    public bool isInBounds(in int[2] position)
     {
-        immutable int[2] mapResolution = this.resolution;
-
-        if(position[0] < 0) return false;
-        if(position[1] < 0) return false;
-
-        if(position[0] >= mapResolution[0]) return false;
-        if(position[1] >= mapResolution[1]) return false;
-
-        return true;
+        return cast(uint)position[0] < cast(uint)resolution[0] &&
+            cast(uint)position[1] < cast(uint)resolution[1];
     }
 
     /// Bound position to map coordinates
     /// Params:
     ///   position = the position, this parameter is ref and WILL BE bounded.
-    pragma(inline, true) public void boundPosition(ref int[2] position)
+    pragma(inline, true)
+    public void boundPosition(ref int[2] p)
     {
-        immutable int[2] mapResolution = this.resolution;
+        // x
+        p[0] += (p[0] < 0) * resolution_[0];
+        p[0] -= (p[0] >= resolution_[0]) * resolution_[0];
 
-        if(position[0] < 0) position[0] = mapResolution[0] - 1;
-        if(position[1] < 0) position[1] = mapResolution[1] - 1;
-
-        position[] %= mapResolution[];
+        // y
+        p[1] += (p[1] < 0) * resolution_[1];
+        p[1] -= (p[1] >= resolution_[1]) * resolution_[1];
     }
 }
