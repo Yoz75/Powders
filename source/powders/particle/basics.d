@@ -377,6 +377,7 @@ public class CombineSystem : MapEntitySystem!Combine
                     destroyParticle(self);
                     destroyParticle(entity);
                     buildParticle(self, serializedResult);
+                    buildAir(entity);
                     return;
                 }        
             }
