@@ -300,6 +300,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
 
     protected override void updateComponent(Entity entity, ref Chunk chunk, ref Adhesion adhesion)
     {
+        import powders.particle.loading : airTypeId;
         chunk.makeClean();
         if(!entity.hasComponent!Movable())
         {
@@ -310,7 +311,7 @@ public class AdhesionSystem : MapEntitySystem!Adhesion
         immutable int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
 
         // at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
-        if(!globalMap.getAt(belowPosition).hasComponent!Particle)
+        if(globalMap.getAt(belowPosition).getComponent!Particle().typeId != airTypeId)
         {
             return;
         }
