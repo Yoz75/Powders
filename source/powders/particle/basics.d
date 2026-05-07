@@ -310,16 +310,19 @@ public class AdhesionSystem : System!Adhesion
     private ComponentPool!Adhesion adhesions;
     private ComponentPool!Movable movables;
     private ComponentPool!Position positions;
+    private ComponentPool!Particle particles;
 
     public override void onCreated()
     {
         adhesions = currentWorld.getPoolOf!Adhesion();
         movables = currentWorld.getPoolOf!Movable();
         positions = currentWorld.getPoolOf!Position();
+        particles = currentWorld.getPoolOf!Particle();
     }
 
     protected override void onUpdated()
     {
+        import powders.particle.loading : airTypeId;
         auto data = adhesions.getComponents();
 
         foreach(i, adhesion; data)
@@ -328,14 +331,14 @@ public class AdhesionSystem : System!Adhesion
             ref Movable movable = movables.getComponent(entity);
             if(movables.getComponent(entity).isFalling) return;    
 
-            /*immutable auto position = entity.getComponent!Position();
+            immutable auto position = positions.getComponent(entity);
             immutable int[2] belowPosition = [position.xy[0] + Gravity.direction[0], position.xy[1] + Gravity.direction[1]];
 
             // at some reason sometimes there are "holes", delete this if you know how to fix that holes other way.
-            if(!globalMap.getAt(belowPosition).hasComponent!Particle)
+            if(particles.getComponent(globalMap.getAt(belowPosition)).typeId == airTypeId)
             {
                 return;
-            }*/
+            }
 
             immutable VelocityScalar[2][2][GravityDirection] direction2Biases = 
             [
