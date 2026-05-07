@@ -228,9 +228,6 @@ public class TemperatureSystem : System!Temperature
         valueOutSSBO = gameWindow.getNewUninitedBuffer();
 
         immutable auto mapByteSize = uint(Temperature.sizeof) * mapResolution[0] * mapResolution[1];
-        immutable auto chunkOutSize = 
-            uint(uint.sizeof) * mapResolution[0] * mapResolution[1] / (Map.chunkSize * Map.chunkSize);
-
         valueInBuffer = new Temperature[mapResolution[0] * mapResolution[1]];
         valueInBuffer[] = Temperature.init; // bruh at some reasone default values in the array are not Temperature.init
 
